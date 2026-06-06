@@ -1,0 +1,1310 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Restaurant Recommendation System</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --blue-dark:  #1a3a5c;
+    --blue-mid:   #2e75b6;
+    --blue-light: #d0e4f7;
+    --blue-pale:  #f0f7ff;
+    --gray-dark:  #333;
+    --gray-mid:   #666;
+    --gray-light: #e8ecf0;
+    --white:      #ffffff;
+    --gold:       #f4a318;
+    --silver:     #8fa3b1;
+    --bronze:     #c07942;
+  }
+
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #f4f7fb;
+    color: var(--gray-dark);
+    line-height: 1.6;
+  }
+
+  /* ── Header ── */
+  header {
+    background: linear-gradient(135deg, var(--blue-dark) 0%, var(--blue-mid) 100%);
+    color: var(--white);
+    padding: 48px 24px 36px;
+    text-align: center;
+  }
+  header h1 { font-size: 2rem; letter-spacing: 1px; margin-bottom: 8px; }
+  header p  { font-size: 0.95rem; opacity: 0.8; }
+  .badge {
+    display: inline-block;
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 0.8rem;
+    margin-top: 12px;
+  }
+
+  /* ── Container ── */
+  .container { max-width: 1100px; margin: 0 auto; padding: 40px 20px; }
+  .section-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--blue-dark);
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 3px solid var(--blue-mid);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* ── Score Criteria Legend ── */
+  .criteria-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 10px;
+    margin-bottom: 40px;
+  }
+  .criteria-item {
+    background: var(--white);
+    border-left: 4px solid var(--blue-mid);
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 0.82rem;
+  }
+  .criteria-item strong { display: block; color: var(--blue-dark); font-size: 0.9rem; }
+
+  /* ── Top 3 Cards ── */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 48px; }
+
+  .card {
+    background: var(--white);
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    transition: transform 0.2s, box-shadow 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(0,0,0,0.12); }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+  }
+  .card.rank-1::before { background: var(--gold); }
+  .card.rank-2::before { background: var(--silver); }
+  .card.rank-3::before { background: var(--bronze); }
+
+  .medal {
+    width: 40px; height: 40px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem; font-weight: 800;
+    margin-bottom: 14px;
+  }
+  .rank-1 .medal { background: #fff3cd; color: var(--gold); }
+  .rank-2 .medal { background: #e9ecef; color: var(--silver); }
+  .rank-3 .medal { background: #fde8d8; color: var(--bronze); }
+
+  .card h3 { font-size: 1.05rem; color: var(--blue-dark); margin-bottom: 6px; }
+  .card .area-tag {
+    display: inline-block;
+    background: var(--blue-pale);
+    color: var(--blue-mid);
+    border-radius: 12px;
+    padding: 2px 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+
+  .score-bar { margin: 12px 0 16px; }
+  .score-bar .label { font-size: 0.75rem; color: var(--gray-mid); margin-bottom: 4px; display: flex; justify-content: space-between; }
+  .score-bar .bar { height: 8px; background: var(--gray-light); border-radius: 4px; overflow: hidden; }
+  .score-bar .fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--blue-mid), #5ba3d9); transition: width 1s ease; }
+
+  .card-meta { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .chip {
+    background: var(--blue-pale);
+    color: var(--blue-dark);
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+  }
+
+  .card-reason { font-size: 0.85rem; color: var(--gray-mid); border-top: 1px solid var(--gray-light); padding-top: 12px; }
+
+  /* ── Table ── */
+  .table-wrap { overflow-x: auto; border-radius: 10px; box-shadow: 0 2px 12px rgba(0,0,0,0.07); }
+  table { width: 100%; border-collapse: collapse; background: var(--white); }
+  thead tr { background: var(--blue-dark); color: var(--white); }
+  thead th { padding: 14px 16px; text-align: left; font-size: 0.85rem; letter-spacing: 0.5px; white-space: nowrap; }
+  tbody tr { border-bottom: 1px solid var(--gray-light); transition: background 0.15s; }
+  tbody tr:hover { background: var(--blue-pale); }
+  tbody tr:nth-child(even) { background: #f8fafd; }
+  tbody tr:nth-child(even):hover { background: var(--blue-pale); }
+  tbody td { padding: 12px 16px; font-size: 0.88rem; }
+
+  .rank-num {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 0.82rem;
+  }
+  .rank-gold   { background: #fff3cd; color: var(--gold); }
+  .rank-silver { background: #e9ecef; color: var(--silver); }
+  .rank-bronze { background: #fde8d8; color: var(--bronze); }
+  .rank-normal { background: var(--blue-pale); color: var(--blue-dark); }
+
+  .rating-star { color: var(--gold); font-weight: 700; }
+
+  .price-chip {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  .p1 { background: #e2f0d9; color: #375623; }
+  .p2 { background: #fff2cc; color: #7d6608; }
+  .p3 { background: #fce4d6; color: #833c00; }
+  .p4 { background: #ffd7cc; color: #7a1c00; }
+  .pna{ background: #f2f2f2; color: #666; }
+
+  .score-cell { font-weight: 700; color: var(--blue-dark); }
+
+  /* ── Score breakdown pills ── */
+  .breakdown { font-size: 0.72rem; color: var(--gray-mid); }
+
+  /* ── Comparison section ── */
+  .comparison { margin-top: 48px; }
+  .compare-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+  .compare-card { background: var(--white); border-radius: 10px; padding: 20px; box-shadow: 0 1px 8px rgba(0,0,0,0.06); }
+  .compare-card h4 { color: var(--blue-mid); font-size: 0.95rem; margin-bottom: 12px; }
+  .pros-cons { font-size: 0.83rem; }
+  .pros-cons .pro { color: #2d6a2d; margin: 4px 0; }
+  .pros-cons .con { color: #8b2020; margin: 4px 0; }
+
+  /* ── Footer ── */
+  footer { text-align: center; padding: 30px; font-size: 0.8rem; color: var(--gray-mid); border-top: 1px solid var(--gray-light); margin-top: 40px; }
+
+  @media (max-width: 600px) {
+    header h1 { font-size: 1.4rem; }
+    .cards { grid-template-columns: 1fr; }
+    thead th:nth-child(n+6) { display: none; }
+    tbody td:nth-child(n+6) { display: none; }
+  }
+
+  /* ── Area Top3 Buttons ── */
+  .area-top3-btn {
+    background: var(--white); color: var(--blue-dark);
+    border: 2px solid var(--blue-mid); border-radius: 24px;
+    padding: 8px 20px; font-size: 0.88rem; cursor: pointer;
+    font-family: inherit; font-weight: 600; transition: all 0.15s;
+  }
+  .area-top3-btn:hover { background: var(--blue-light); }
+  .active-atb { background: var(--blue-mid) !important; color: #fff !important; }
+
+  /* ── Filter Chips ── */
+  .filter-chip {
+    background: var(--white); color: var(--blue-dark);
+    border: 1.5px solid var(--blue-light); border-radius: 20px;
+    padding: 5px 14px; font-size: 0.8rem; cursor: pointer;
+    transition: all 0.15s; font-family: inherit; font-weight: 500;
+  }
+  .filter-chip:hover { background: var(--blue-light); border-color: var(--blue-mid); }
+  .active-fc { background: var(--blue-mid) !important; color: #fff !important; border-color: var(--blue-mid) !important; font-weight: 700 !important; }
+
+  /* ── Area Chips ── */
+  .area-chip {
+    background: var(--white); color: var(--blue-dark);
+    border: 1.5px solid var(--blue-light); border-radius: 20px;
+    padding: 6px 16px; font-size: 0.82rem; cursor: pointer;
+    transition: all 0.15s; font-family: inherit; font-weight: 500;
+  }
+  .area-chip:hover { background: var(--blue-light); border-color: var(--blue-mid); }
+  .active-chip { background: var(--blue-mid) !important; color: #fff !important; border-color: var(--blue-mid) !important; }
+
+  /* ── AI Ask Box ── */
+  .chip-btn {
+    background: var(--blue-pale); color: var(--blue-dark);
+    border: 1px solid var(--blue-light); border-radius: 16px;
+    padding: 6px 14px; font-size: 0.8rem; cursor: pointer;
+    transition: background 0.15s, transform 0.1s; font-family: inherit;
+  }
+  .chip-btn:hover { background: var(--blue-light); transform: translateY(-1px); }
+
+  .user-msg {
+    background: var(--blue-mid); color: #fff;
+    padding: 10px 16px; border-radius: 16px 16px 4px 16px;
+    margin: 8px 0 8px auto; max-width: 75%; width: fit-content;
+    font-size: 0.9rem;
+  }
+  .bot-msg {
+    background: var(--blue-pale); border: 1px solid var(--blue-light);
+    padding: 14px 16px; border-radius: 4px 16px 16px 16px;
+    margin: 8px 0; font-size: 0.88rem; max-width: 95%;
+  }
+  .answer-label { font-weight: 700; color: var(--blue-dark); margin-bottom: 6px; font-size: 0.8rem; }
+
+  .ai-table { width: 100%; border-collapse: collapse; margin-top: 6px; font-size: 0.82rem; }
+  .ai-table th { background: var(--blue-dark); color: #fff; padding: 7px 10px; text-align: left; }
+  .ai-table td { padding: 6px 10px; border-bottom: 1px solid var(--gray-light); }
+  .ai-table tr:hover td { background: #f0f7ff; }
+
+  .ai-card {
+    background: #fff; border: 1px solid var(--blue-light);
+    border-radius: 10px; padding: 14px 16px; font-size: 0.85rem;
+  }
+
+</style>
+</head>
+<body>
+
+<header>
+  <div style="max-width:900px;margin:0 auto;">
+    <div style="font-size:0.8rem;opacity:0.6;margin-bottom:8px;letter-spacing:1px;text-transform:uppercase;">AI Workflow Project</div>
+    <h1>🍽 Restaurant Recommendation System</h1>
+    <p style="margin-top:8px;font-size:1rem;opacity:0.85;">ระบบแนะนำร้านอาหารสำหรับกลุ่ม 8–12 คน ด้วย AI Workflow</p>
+
+    <!-- Meta info grid -->
+    <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:20px;margin-top:24px;font-size:0.85rem;">
+      <div style="background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.25);border-radius:10px;padding:10px 20px;text-align:left;">
+        <div style="opacity:0.6;font-size:0.72rem;margin-bottom:2px;">📁 PROJECT</div>
+        <div style="font-weight:600;">AI Food Assistant</div>
+      </div>
+      <div style="background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.25);border-radius:10px;padding:10px 20px;text-align:left;">
+        <div style="opacity:0.6;font-size:0.72rem;margin-bottom:2px;">📍 AREA</div>
+        <div style="font-weight:600;">อารีย์ · อโศก · สยาม · ทองหล่อ · พร้อมพงษ์</div>
+      </div>
+      <div style="background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.25);border-radius:10px;padding:10px 20px;text-align:left;">
+        <div style="opacity:0.6;font-size:0.72rem;margin-bottom:2px;">📅 DATE</div>
+        <div style="font-weight:600;">6 มิถุนายน 2026</div>
+      </div>
+      <div style="background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.25);border-radius:10px;padding:10px 20px;text-align:left;">
+        <div style="opacity:0.6;font-size:0.72rem;margin-bottom:2px;">👤 AUTHOR</div>
+        <div style="font-weight:600;">Deachavat Bumroervong</div>
+      </div>
+    </div>
+    <span class="badge" style="margin-top:20px;">145 ร้าน · 6 เกณฑ์ · 100 คะแนน · Tripadvisor + Google Maps</span>
+  </div>
+</header>
+
+<div class="container">
+
+  <!-- ── Objective ── -->
+  <section style="background:#fff;border-radius:12px;padding:28px 32px;margin-bottom:32px;box-shadow:0 2px 10px rgba(0,0,0,0.06);">
+    <div class="section-title">🎯 เป้าหมายของโปรเจกต์</div>
+    <p style="font-size:0.95rem;color:#444;max-width:800px;line-height:1.8;">
+      สร้าง <strong>AI Workflow</strong> เพื่อช่วยตัดสินใจเลือกร้านอาหารสำหรับ <strong>ทีม 8–12 คน</strong> มื้อเย็นหลังเลิกงาน
+      โดยใช้ข้อมูลจริง รีวิวจริง และหลักฐานที่ตรวจสอบได้ ไม่ใช่แค่ความรู้สึก
+    </p>
+    <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:16px;">
+      <div style="background:#f0f7ff;border-left:3px solid #2e75b6;padding:10px 16px;border-radius:0 8px 8px 0;font-size:0.85rem;">
+        <strong>คำถามหลัก:</strong> ถ้าทีมต้องเลือกร้านอาหาร 1–3 ร้าน จากพื้นที่ที่กำหนด ร้านไหนเหมาะที่สุด?
+      </div>
+      <div style="background:#f0f7ff;border-left:3px solid #2e75b6;padding:10px 16px;border-radius:0 8px 8px 0;font-size:0.85rem;">
+        <strong>เงื่อนไข:</strong> ราคาเหมาะสม · เดินทางสะดวก · รองรับกลุ่มใหญ่ · ข้อมูลจาก dataset จริง
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Workflow Overview ── -->
+  <section style="background:#fff;border-radius:12px;padding:28px 32px;margin-bottom:32px;box-shadow:0 2px 10px rgba(0,0,0,0.06);">
+    <div class="section-title">🔄 ภาพรวม Workflow</div>
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:4px;justify-content:center;">
+
+      <div style="text-align:center;padding:16px 18px;background:#f0f7ff;border-radius:10px;min-width:130px;flex:1 1 130px;max-width:180px;">
+        <div style="font-size:1.6rem;margin-bottom:6px;">🎯</div>
+        <div style="font-size:0.78rem;font-weight:700;color:#1a3a5c;margin-bottom:4px;">1. Problem Framing</div>
+        <div style="font-size:0.72rem;color:#666;">กำหนดโจทย์, เลือกย่าน, ตั้งเกณฑ์</div>
+      </div>
+      <div style="font-size:1.2rem;color:#2e75b6;font-weight:700;">→</div>
+
+      <div style="text-align:center;padding:16px 18px;background:#f0f7ff;border-radius:10px;min-width:130px;flex:1 1 130px;max-width:180px;">
+        <div style="font-size:1.6rem;margin-bottom:6px;">🕷️</div>
+        <div style="font-size:0.78rem;font-weight:700;color:#1a3a5c;margin-bottom:4px;">2. Data Collection</div>
+        <div style="font-size:0.72rem;color:#666;">Apify scrape Tripadvisor + Google Maps</div>
+      </div>
+      <div style="font-size:1.2rem;color:#2e75b6;font-weight:700;">→</div>
+
+      <div style="text-align:center;padding:16px 18px;background:#f0f7ff;border-radius:10px;min-width:130px;flex:1 1 130px;max-width:180px;">
+        <div style="font-size:1.6rem;margin-bottom:6px;">⚡</div>
+        <div style="font-size:0.78rem;font-weight:700;color:#1a3a5c;margin-bottom:4px;">3. n8n Automation</div>
+        <div style="font-size:0.72rem;color:#666;">รับข้อมูลจาก Apify → ส่งเข้า Google Sheets</div>
+      </div>
+      <div style="font-size:1.2rem;color:#2e75b6;font-weight:700;">→</div>
+
+      <div style="text-align:center;padding:16px 18px;background:#f0f7ff;border-radius:10px;min-width:130px;flex:1 1 130px;max-width:180px;">
+        <div style="font-size:1.6rem;margin-bottom:6px;">🧹</div>
+        <div style="font-size:0.78rem;font-weight:700;color:#1a3a5c;margin-bottom:4px;">4. Data Cleaning</div>
+        <div style="font-size:0.72rem;color:#666;">Claude AI ช่วย normalize → clean_data</div>
+      </div>
+      <div style="font-size:1.2rem;color:#2e75b6;font-weight:700;">→</div>
+
+      <div style="text-align:center;padding:16px 18px;background:#f0f7ff;border-radius:10px;min-width:130px;flex:1 1 130px;max-width:180px;">
+        <div style="font-size:1.6rem;margin-bottom:6px;">🏆</div>
+        <div style="font-size:0.78rem;font-weight:700;color:#1a3a5c;margin-bottom:4px;">5. Scoring & Ranking</div>
+        <div style="font-size:0.72rem;color:#666;">AI คำนวณ 6 เกณฑ์ 100 คะแนน</div>
+      </div>
+      <div style="font-size:1.2rem;color:#2e75b6;font-weight:700;">→</div>
+
+      <div style="text-align:center;padding:16px 18px;background:#f0f7ff;border-radius:10px;min-width:130px;flex:1 1 130px;max-width:180px;">
+        <div style="font-size:1.6rem;margin-bottom:6px;">🌐</div>
+        <div style="font-size:0.78rem;font-weight:700;color:#1a3a5c;margin-bottom:4px;">6. HTML Output</div>
+        <div style="font-size:0.72rem;color:#666;">หน้าเว็บสรุปผลนี้</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ── Tools Used ── -->
+  <section style="background:#fff;border-radius:12px;padding:28px 32px;margin-bottom:32px;box-shadow:0 2px 10px rgba(0,0,0,0.06);">
+    <div class="section-title">🛠️ เครื่องมือที่ใช้</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;">
+
+      <div style="display:flex;align-items:flex-start;gap:12px;padding:14px;background:#f8fafd;border-radius:8px;border:1px solid #e0eaf5;">
+        <span style="font-size:1.4rem;flex-shrink:0;">🕷️</span>
+        <div>
+          <div style="font-weight:700;font-size:0.9rem;color:#1a3a5c;">Apify</div>
+          <div style="font-size:0.78rem;color:#666;">Web scraping — เก็บข้อมูลจาก Tripadvisor และ Google Maps</div>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:flex-start;gap:12px;padding:14px;background:#f8fafd;border-radius:8px;border:1px solid #e0eaf5;">
+        <span style="font-size:1.4rem;flex-shrink:0;">📊</span>
+        <div>
+          <div style="font-weight:700;font-size:0.9rem;color:#1a3a5c;">Google Sheets</div>
+          <div style="font-size:0.78rem;color:#666;">จัดเก็บ raw_data และ clean_data</div>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:flex-start;gap:12px;padding:14px;background:#f8fafd;border-radius:8px;border:1px solid #e0eaf5;">
+        <span style="font-size:1.4rem;flex-shrink:0;">🤖</span>
+        <div>
+          <div style="font-weight:700;font-size:0.9rem;color:#1a3a5c;">Claude AI</div>
+          <div style="font-size:0.78rem;color:#666;">Data cleaning, scoring model, analysis, HTML generation</div>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:flex-start;gap:12px;padding:14px;background:#f8fafd;border-radius:8px;border:1px solid #e0eaf5;">
+        <span style="font-size:1.4rem;flex-shrink:0;">⚡</span>
+        <div>
+          <div style="font-weight:700;font-size:0.9rem;color:#1a3a5c;">n8n / Make</div>
+          <div style="font-size:0.78rem;color:#666;">Automation workflow — เชื่อมขั้นตอนอัตโนมัติ</div>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:flex-start;gap:12px;padding:14px;background:#f8fafd;border-radius:8px;border:1px solid #e0eaf5;">
+        <span style="font-size:1.4rem;flex-shrink:0;">🌐</span>
+        <div>
+          <div style="font-weight:700;font-size:0.9rem;color:#1a3a5c;">HTML / CSS / JS</div>
+          <div style="font-size:0.78rem;color:#666;">Final report — หน้าเว็บที่เปิดใช้งานได้จริง</div>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:flex-start;gap:12px;padding:14px;background:#f8fafd;border-radius:8px;border:1px solid #e0eaf5;">
+        <span style="font-size:1.4rem;flex-shrink:0;">🐍</span>
+        <div>
+          <div style="font-weight:700;font-size:0.9rem;color:#1a3a5c;">Python (pandas)</div>
+          <div style="font-size:0.78rem;color:#666;">Data processing, scoring calculation, export</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ── Data Sources ── -->
+  <section style="background:#fff;border-radius:12px;padding:28px 32px;margin-bottom:32px;box-shadow:0 2px 10px rgba(0,0,0,0.06);">
+    <div class="section-title">📂 แหล่งข้อมูล</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;">
+
+      <div style="border:1px solid #d0e4f7;border-radius:10px;overflow:hidden;">
+        <div style="background:#1a3a5c;color:#fff;padding:10px 16px;font-size:0.85rem;font-weight:700;">
+          🔴 Tripadvisor
+        </div>
+        <div style="padding:14px 16px;font-size:0.83rem;color:#444;line-height:1.7;">
+          <div>📌 เก็บข้อมูลด้วย <strong>Apify Tripadvisor Scraper</strong></div>
+          <div>📌 ร้านในย่าน: อารีย์</div>
+          <div>📌 ข้อมูล: ชื่อร้าน, rating, รีวิว, ราคา, เวลาเปิด, โทร, URL</div>
+          <div style="margin-top:8px;">
+            <a href="https://www.tripadvisor.com" target="_blank" style="color:#2e75b6;font-size:0.78rem;">🔗 tripadvisor.com</a>
+          </div>
+        </div>
+      </div>
+
+      <div style="border:1px solid #d0e4f7;border-radius:10px;overflow:hidden;">
+        <div style="background:#1a6b34;color:#fff;padding:10px 16px;font-size:0.85rem;font-weight:700;">
+          🟢 Google Maps
+        </div>
+        <div style="padding:14px 16px;font-size:0.83rem;color:#444;line-height:1.7;">
+          <div>📌 เก็บข้อมูลด้วย <strong>Apify Google Maps Scraper</strong></div>
+          <div>📌 ร้านในย่าน: อโศก, สยาม, ทองหล่อ, พร้อมพงษ์</div>
+          <div>📌 ข้อมูล: ชื่อร้าน, rating, รีวิว, ที่อยู่, เวลาเปิด, โทร</div>
+          <div style="margin-top:8px;">
+            <a href="https://maps.google.com" target="_blank" style="color:#2e75b6;font-size:0.78rem;">🔗 maps.google.com</a>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div style="margin-top:14px;background:#f0f7ff;border-radius:8px;padding:12px 16px;font-size:0.8rem;color:#555;">
+      📊 ข้อมูลรวม: <strong>150 แถว raw_data</strong> → หลัง cleaning เหลือ <strong>145 ร้าน clean_data</strong>
+      (ลบ duplicate 2 แถว + rating null/0 อีก 3 แถว)
+    </div>
+  </section>
+
+  <!-- Scoring Criteria -->
+  <div class="section-title">📊 เกณฑ์การให้คะแนน</div>
+  <div class="criteria-grid">
+    <div class="criteria-item"><strong>Rating & Review (25)</strong>คะแนนรีวิวสูง + จำนวนรีวิวมาก</div>
+    <div class="criteria-item"><strong>Group Suitability (20)</strong>รองรับกลุ่ม 8–12 คน</div>
+    <div class="criteria-item"><strong>Price Suitability (15)</strong>ราคากลาง ไม่แพง/ถูกเกิน</div>
+    <div class="criteria-item"><strong>Travel Convenience (15)</strong>อยู่ใกล้ BTS/MRT</div>
+    <div class="criteria-item"><strong>Data Completeness (15)</strong>ข้อมูลครบถ้วน</div>
+    <div class="criteria-item"><strong>Uniqueness (10)</strong>Concept โดดเด่น น่าสนใจ</div>
+  </div>
+
+  <!-- ──────────────── Area Top 3 (Dynamic) ──────────────── -->
+  <div id="area-top3-section">
+    <div class="section-title">🏆 Top 3 Recommendations ตามย่าน</div>
+    <p style="font-size:0.85rem;color:#666;margin-bottom:16px;">
+      เลือกย่านเพื่อดู Top 3 ร้านที่แนะนำสำหรับกลุ่ม 8–12 คน
+    </p>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px;">
+      <button class="area-top3-btn active-atb" onclick="showAreaTop3(this,'Asok')">📍 Asok</button>
+      <button class="area-top3-btn" onclick="showAreaTop3(this,'Siam')">📍 Siam</button>
+      <button class="area-top3-btn" onclick="showAreaTop3(this,'Thonglor')">📍 Thonglor</button>
+      <button class="area-top3-btn" onclick="showAreaTop3(this,'Phrom Phong')">📍 Phrom Phong</button>
+      <button class="area-top3-btn" onclick="showAreaTop3(this,'Ari')">📍 Ari</button>
+    </div>
+    <div id="area-top3-result"></div>
+    <!-- Dynamic comparison -->
+    <div id="area-compare-result" style="margin-top:28px;"></div>
+  </div>
+
+  <!-- Top 10 Table -->
+  <div class="section-title">📋 Top 10 จัดอันดับทั้งหมด</div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Rank</th>
+          <th>ชื่อร้าน</th>
+          <th>ย่าน</th>
+          <th>Score</th>
+          <th>ราคา</th>
+          <th>Rating</th>
+          <th>รีวิว</th>
+          <th>เหตุผลหลัก</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="rank-num rank-gold">1</span></td>
+          <td><strong>Sunrise Tacos MEXICAN GRILL</strong></td>
+          <td>Asok</td>
+          <td><span class="score-cell">96.1</span></td>
+          <td><span class="price-chip p2">฿300–600</span></td>
+          <td><span class="rating-star">⭐ 4.7</span></td>
+          <td>5,001</td>
+          <td>รีวิวมากที่สุด, ราคาเหมาะสม, ทำเลดี</td>
+        </tr>
+        <tr>
+          <td><span class="rank-num rank-silver">2</span></td>
+          <td><strong>BARTELS Asok</strong></td>
+          <td>Asok</td>
+          <td><span class="score-cell">95.6</span></td>
+          <td><span class="price-chip p2">฿300–600</span></td>
+          <td><span class="rating-star">⭐ 4.8</span></td>
+          <td>2,429</td>
+          <td>Rating สูง, concept โดดเด่น, ข้อมูลครบ</td>
+        </tr>
+        <tr>
+          <td><span class="rank-num rank-bronze">3</span></td>
+          <td><strong>Jasmine Siam Kitchen</strong></td>
+          <td>Siam</td>
+          <td><span class="score-cell">94.4</span></td>
+          <td><span class="price-chip p2">฿300–600</span></td>
+          <td><span class="rating-star">⭐ 4.7</span></td>
+          <td>1,151</td>
+          <td>ทำเลสยาม-ใจกลาง, อาหารไทย, ราคาเป็นมิตร</td>
+        </tr>
+        <tr>
+          <td><span class="rank-num rank-normal">4</span></td>
+          <td>Spectrum Lounge &amp; Bar</td>
+          <td>Thonglor</td>
+          <td><span class="score-cell">94.2</span></td>
+          <td><span class="price-chip p3">฿600–1000</span></td>
+          <td><span class="rating-star">⭐ 4.9</span></td>
+          <td>3,336</td>
+          <td>Rating สูงสุด, บรรยากาศพิเศษ, รีวิวมาก</td>
+        </tr>
+        <tr>
+          <td><span class="rank-num rank-normal">5</span></td>
+          <td>เคนชิน อิซากายะ สาขาอโศก</td>
+          <td>Asok</td>
+          <td><span class="score-cell">93.6</span></td>
+          <td><span class="price-chip p2">฿300–600</span></td>
+          <td><span class="rating-star">⭐ 4.3</span></td>
+          <td>1,693</td>
+          <td>อาหารญี่ปุ่น, ราคาดี, ย่านอโศก</td>
+        </tr>
+        <tr>
+          <td><span class="rank-num rank-normal">6</span></td>
+          <td>Octave Rooftop Lounge &amp; Bar</td>
+          <td>Thonglor</td>
+          <td><span class="score-cell">93.5</span></td>
+          <td><span class="price-chip p3">฿600–1000</span></td>
+          <td><span class="rating-star">⭐ 4.6</span></td>
+          <td>3,932</td>
+          <td>Rooftop concept, รีวิวมากที่สุดในกลุ่ม</td>
+        </tr>
+        <tr>
+          <td><span class="rank-num rank-normal">7</span></td>
+          <td>Madam Saranair Thai Food</td>
+          <td>Asok</td>
+          <td><span class="score-cell">92.5</span></td>
+          <td><span class="price-chip p3">฿600–1000</span></td>
+          <td><span class="rating-star">⭐ 4.5</span></td>
+          <td>2,189</td>
+          <td>อาหารไทย, รีวิวสม่ำเสมอ, อโศก</td>
+        </tr>
+        <tr>
+          <td><span class="rank-num rank-normal">8</span></td>
+          <td>ปิง หูฉลาม อโศก</td>
+          <td>Asok</td>
+          <td><span class="score-cell">92.5</span></td>
+          <td><span class="price-chip p3">฿600–1000</span></td>
+          <td><span class="rating-star">⭐ 4.6</span></td>
+          <td>1,593</td>
+          <td>อาหารจีน, รีวิวดี, เหมาะกลุ่ม</td>
+        </tr>
+        <tr>
+          <td><span class="rank-num rank-normal">9</span></td>
+          <td>KURATHAI SHOKUDO</td>
+          <td>Phrom Phong</td>
+          <td><span class="score-cell">92.3</span></td>
+          <td><span class="price-chip p2">฿300–600</span></td>
+          <td><span class="rating-star">⭐ 4.8</span></td>
+          <td>2,026</td>
+          <td>Rating สูง 4.8, ราคาดี, พร้อมพงษ์</td>
+        </tr>
+        <tr>
+          <td><span class="rank-num rank-normal">10</span></td>
+          <td>Ryoku Cafe</td>
+          <td>Phrom Phong</td>
+          <td><span class="score-cell">92.3</span></td>
+          <td><span class="price-chip p2">฿300–600</span></td>
+          <td><span class="rating-star">⭐ 4.7</span></td>
+          <td>2,573</td>
+          <td>Concept ญี่ปุ่น, ราคาดี, รีวิวสม่ำเสมอ</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Comparison -->
+
+
+
+  <!-- ──────────────── AI Ask Box ──────────────── -->
+  <div id="ai-section" style="margin-top:48px;">
+    <div class="section-title">🤖 AI Ask Box — ถามเกี่ยวกับร้านอาหาร</div>
+    <p style="font-size:0.85rem;color:#666;margin-bottom:16px;">
+      ถามได้เลย เช่น: "ร้านที่ rating สูงสุด", "ร้านถูกที่สุดใน Asok", "แนะนำร้านสำหรับกลุ่มใหญ่", "เปรียบเทียบ Sunrise Tacos กับ BARTELS"
+    </p>
+
+    <!-- Suggestion chips -->
+    <div id="chips" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">
+      <div style="font-size:0.75rem;color:#888;margin-bottom:0;font-weight:600;letter-spacing:0.5px;align-self:center;">💬 คำถามด่วน:</div>
+      <button class="chip-btn" onclick="askQuestion(this.textContent)">ร้านที่ rating สูงสุด</button>
+      <button class="chip-btn" onclick="askQuestion(this.textContent)">ร้านถูกที่สุด</button>
+      <button class="chip-btn" onclick="askQuestion(this.textContent)">ร้านรีวิวเยอะที่สุด</button>
+      <button class="chip-btn" onclick="askQuestion(this.textContent)">ร้านอาหารไทยแนะนำ</button>
+      <button class="chip-btn" onclick="askQuestion(this.textContent)">แนะนำร้านสำหรับกลุ่มใหญ่</button>
+      <button class="chip-btn" onclick="askQuestion(this.textContent)">ร้านใน Siam ราคาไม่แพง</button>
+    </div>
+
+    <!-- Input -->
+    <div style="display:flex;gap:10px;margin-bottom:20px;">
+      <input id="ai-input" type="text" placeholder="พิมพ์คำถามของคุณ..." 
+        style="flex:1;padding:12px 16px;border:2px solid #d0e4f7;border-radius:8px;font-size:0.95rem;outline:none;font-family:inherit;"
+        onkeydown="if(event.key==='Enter') sendQuestion()"
+        onfocus="this.style.borderColor='#2e75b6'"
+        onblur="this.style.borderColor='#d0e4f7'"
+      />
+      <button onclick="sendQuestion()" 
+        style="padding:12px 24px;background:#2e75b6;color:#fff;border:none;border-radius:8px;font-size:0.95rem;cursor:pointer;font-weight:600;transition:background 0.2s;"
+        onmouseover="this.style.background='#1a3a5c'"
+        onmouseout="this.style.background='#2e75b6'"
+      >ถาม</button>
+    </div>
+
+    <!-- Chat window -->
+    <div id="chat-box" style="background:#fff;border:1px solid #d0e4f7;border-radius:10px;min-height:80px;max-height:500px;overflow-y:auto;padding:16px;display:none;"></div>
+  </div>
+
+
+  <!-- ──────────────── Restaurant From Data Set ──────────────── -->
+  <div id="area-filter-section" style="margin-top:48px;">
+    <div class="section-title">🍽️ Restaurant From Data Set</div>
+    <p style="font-size:0.85rem;color:#666;margin-bottom:20px;">
+      กรองร้านอาหารตามประเภทและราคา — ข้อมูลจาก clean_data (145 ร้าน)
+    </p>
+
+    <!-- Filter Row -->
+    <div style="background:#fff;border-radius:12px;padding:20px 24px;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+
+      <!-- Food Type -->
+      <div style="margin-bottom:16px;">
+        <div style="font-size:0.75rem;font-weight:700;color:#1a3a5c;letter-spacing:0.5px;margin-bottom:8px;">🍽️ ประเภทอาหาร</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;" id="food-chips">
+          <button class="filter-chip active-fc" data-group="food" data-val=""       onclick="setFilter('food','',this)">ทั้งหมด</button>
+          <button class="filter-chip" data-group="food" data-val="thai"             onclick="setFilter('food','thai',this)">🥘 อาหารไทย</button>
+          <button class="filter-chip" data-group="food" data-val="japanese"         onclick="setFilter('food','japanese',this)">🍣 อาหารญี่ปุ่น</button>
+          <button class="filter-chip" data-group="food" data-val="western"          onclick="setFilter('food','western',this)">🍝 อาหารตะวันตก</button>
+          <button class="filter-chip" data-group="food" data-val="seafood"          onclick="setFilter('food','seafood',this)">🦞 อาหารทะเล</button>
+          <button class="filter-chip" data-group="food" data-val="cafe"             onclick="setFilter('food','cafe',this)">☕ คาเฟ่</button>
+          <button class="filter-chip" data-group="food" data-val="noodle"           onclick="setFilter('food','noodle',this)">🍜 ก๋วยเตี๋ยว/ชาบู</button>
+          <button class="filter-chip" data-group="food" data-val="international"    onclick="setFilter('food','international',this)">🌮 นานาชาติ</button>
+          <button class="filter-chip" data-group="food" data-val="general"          onclick="setFilter('food','general',this)">🍴 ทั่วไป</button>
+        </div>
+      </div>
+
+      <!-- Price -->
+      <div>
+        <div style="font-size:0.75rem;font-weight:700;color:#1a3a5c;letter-spacing:0.5px;margin-bottom:8px;">💰 ราคา</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;" id="price-chips">
+          <button class="filter-chip active-fc" data-group="price" data-val=""          onclick="setFilter('price','',this)">ทั้งหมด</button>
+          <button class="filter-chip" data-group="price" data-val="฿100-300"            onclick="setFilter('price','฿100-300',this)">💚 ฿100–300</button>
+          <button class="filter-chip" data-group="price" data-val="฿300-600"            onclick="setFilter('price','฿300-600',this)">💛 ฿300–600</button>
+          <button class="filter-chip" data-group="price" data-val="฿600-1000"           onclick="setFilter('price','฿600-1000',this)">🟠 ฿600–1000</button>
+          <button class="filter-chip" data-group="price" data-val="฿1000+"              onclick="setFilter('price','฿1000+',this)">🔴 ฿1000+</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Active filter summary -->
+    <div id="filter-tags" style="margin-bottom:12px;min-height:28px;"></div>
+
+    <!-- Summary bar -->
+    <div id="area-summary"></div>
+
+    <!-- Result table -->
+    <div id="area-result" class="table-wrap"></div>
+
+    <!-- Pagination -->
+    <div id="area-pagination" style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:16px;flex-wrap:wrap;"></div>
+  </div>
+
+
+
+</div>
+
+<footer>
+  Restaurant Recommendation System · วิเคราะห์จากข้อมูลจริง 145 ร้าน ·
+  แหล่งข้อมูล: Tripadvisor &amp; Google Maps · สร้างโดย AI Workflow
+</footer>
+
+
+<script>
+const DATASET = [{"name": "Bangkok'78", "area": "Ari", "source": "Tripadvisor", "rating": 4.9, "review_count": 324, "price": "฿600-1000", "food_type": "restaurant", "address": "68 Soi Langsuan 2nd Fl., Sindhorn Midtown Hotel Bangkok, Vignette Collection, an IHG Hotel, กรุงเทพมหานคร (กทม.) 10330 ไทย", "opening_hours": "Mon: 11:30-22:30 | Tue: 11:30-22:30 | Wed: 11:30-22:30 | Thu: 11:30-22:30 | Fri: 11:30-22:30 | Sat: 11:30-22:30 | Sun: 11:30-22:30", "phone": "+66 2 796 8888", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d24191839-Reviews-Bangkok_78-Bangkok.html"}, {"name": "Spectrum Lounge & Bar", "area": "Thonglor", "source": "Tripadvisor", "rating": 4.9, "review_count": 3336, "price": "฿600-1000", "food_type": "restaurant", "address": "1 Soi Sukhumvit 13 Hyatt Regency, กรุงเทพมหานคร (กทม.) 10110 ไทย", "opening_hours": "Mon: 17:30-01:00 | Tue: 17:30-01:00 | Wed: 17:30-01:00 | Thu: 17:30-01:00 | Fri: 17:30-01:00 | Sat: 17:30-01:00 | Sun: 17:30-01:00", "phone": "+66 2 098 1234", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d16726460-Reviews-Spectrum_Lounge_Bar-Bangkok.html"}, {"name": "แฟลท มาร์เบิล", "area": "Ari", "source": "Tripadvisor", "rating": 4.3, "review_count": 34, "price": "฿600-1000", "food_type": "restaurant", "address": "ซอยชำนาญอักษร, กรุงเทพมหานคร (กทม.) ไทย", "opening_hours": "N/A", "phone": "+66 61 695 9666", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d10535512-Reviews-Flat_Marble-Bangkok.html"}, {"name": "ร้านอาหารสวนกุหลาบ", "area": "Ari", "source": "Tripadvisor", "rating": 3.6, "review_count": 36, "price": "฿600-1000", "food_type": "restaurant", "address": "Soi Rajchakru Phahon Yothin Soi 5, กรุงเทพมหานคร (กทม.) ไทย", "opening_hours": "Tue: 08:00-16:00 | Wed: 08:00-16:00 | Thu: 08:00-16:00 | Fri: 08:00-16:00 | Sat: 08:00-16:00", "phone": "+66 2 617 0425", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d847081-Reviews-Suan_Kularb_Restaurant-Bangkok.html"}, {"name": "เลลาว", "area": "Ari", "source": "Tripadvisor", "rating": 4.5, "review_count": 110, "price": "฿600-1000", "food_type": "restaurant", "address": "65-67  ถนนพหลโยธิน 7 ซอยอารีย์, กรุงเทพมหานคร (กทม.) 10400 ไทย", "opening_hours": "Mon: 11:00-22:00 | Tue: 11:00-22:00 | Wed: 11:00-22:00 | Thu: 11:00-22:00 | Fri: 11:00-22:00 | Sat: 11:00-22:00 | Sun: 11:00-22:00", "phone": "+66 2 279 4498", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d7355296-Reviews-LayLao_Aree-Bangkok.html"}, {"name": "ชาม ราชครู", "area": "Ari", "source": "Tripadvisor", "rating": 4.4, "review_count": 7, "price": "฿600-1000", "food_type": "restaurant", "address": "33 ซอย พหลโยธิน 5 ถนน พหลโยธิน (ห้อง 104, ชั้น 1) แขวงสามเสนใน เขต พญาไท, กรุงเทพมหานคร (กทม.) 10400 ไทย", "opening_hours": "Mon: 11:00-00:00 | Tue: 11:00-15:00,17:00-00:00 | Wed: 11:00-15:00,17:00-00:00 | Thu: 11:00-15:00,17:00-00:00 | Fri: 11:00-15:00,17:00-00:00 | Sat: 11:00-15:00,17:00-00:00 | Sun: 11:00-00:00", "phone": "+66 2 279 8991", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d14192679-Reviews-Charm_Eatery_and_Bar_Ratchakru-Bangkok.html"}, {"name": "Medium Rare Steak & Wine", "area": "Ari", "source": "Tripadvisor", "rating": 4.7, "review_count": 190, "price": "฿600-1000", "food_type": "restaurant", "address": "12/1 Soi Pradiphat 10, กรุงเทพมหานคร (กทม.) 10400 ไทย", "opening_hours": "Mon: 12:00-22:30 | Tue: 15:00-22:30 | Wed: 15:00-22:30 | Thu: 15:00-22:30 | Fri: 15:00-22:30 | Sat: 15:00-22:30 | Sun: 12:00-22:30", "phone": "+66 63 838 5389", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d8734036-Reviews-Medium_Rare_Steak_Wine-Bangkok.html"}, {"name": "จิม เบอร์เกอร์ แอนด์ เบียร์", "area": "Ari", "source": "Tripadvisor", "rating": 3.9, "review_count": 84, "price": "฿600-1000", "food_type": "restaurant", "address": "ซอยอารีย์สัมพันธ์ 3 ถ.พระราม 6 แขวงสามเสนใน เขตพญาไท, กรุงเทพมหานคร (กทม.) 10400 ไทย", "opening_hours": "N/A", "phone": "+66 85 660 8880", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d7070450-Reviews-Jim_s_Burgers_and_Beers-Bangkok.html"}, {"name": "เดอะ มาร์เก็ต เรสเตอรองท์", "area": "Ari", "source": "Tripadvisor", "rating": 4.6, "review_count": 45, "price": "฿600-1000", "food_type": "restaurant", "address": "257/1-3  ถนนเจริญนคร โรงแรมอนันตรากรุงเทพ ริเวอร์ไซด์ รีสอร์ทแอนด์สปา, กรุงเทพมหานคร (กทม.) 10600 ไทย", "opening_hours": "Mon: 06:30-10:30 | Tue: 06:30-10:30 | Wed: 06:30-10:30 | Thu: 06:30-10:30 | Fri: 06:30-10:30 | Sat: 06:30-10:30 | Sun: 06:30-10:30", "phone": "+66 2 476 0022", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d3451483-Reviews-The_Market_Restaurant-Bangkok.html"}, {"name": "Salt Aree", "area": "Ari", "source": "Tripadvisor", "rating": 3.3, "review_count": 136, "price": "฿600-1000", "food_type": "restaurant", "address": "111/2 Soi Ari, Phaholyothin Soi 7, กรุงเทพมหานคร (กทม.) 10400 ไทย", "opening_hours": "Tue: 17:00-00:00 | Wed: 17:00-00:00 | Thu: 17:00-00:00 | Fri: 17:00-00:00 | Sat: 17:00-00:00 | Sun: 17:00-00:00", "phone": "+66 2 619 6886", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d2344559-Reviews-Salt_Aree-Bangkok.html"}, {"name": "ร้านเส่ย", "area": "Ari", "source": "Tripadvisor", "rating": 4.2, "review_count": 129, "price": "฿600-1000", "food_type": "restaurant", "address": "ซอยพิบูลวัฒนา 6 แขวงสามเสนใน เขตพญาไท, กรุงเทพมหานคร (กทม.) 10400 ไทย", "opening_hours": "Mon: 10:30-21:30 | Tue: 10:30-21:30 | Wed: 10:30-21:30 | Thu: 10:30-21:30 | Fri: 10:30-21:30 | Sat: 10:30-21:30", "phone": "+66 61 096 1616", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d7064055-Reviews-Soei_Restaurant-Bangkok.html"}, {"name": "Yellow Lane", "area": "Ari", "source": "Tripadvisor", "rating": 4.6, "review_count": 9, "price": "฿600-1000", "food_type": "restaurant", "address": "2, 92 Phahonyothin Soi 5, กรุงเทพมหานคร (กทม.) 10400 ไทย", "opening_hours": "Mon: 09:00-22:00 | Tue: 09:00-22:00 | Wed: 09:00-22:00 | Thu: 09:00-22:00 | Fri: 09:00-22:00 | Sat: 09:00-23:00 | Sun: 09:00-23:00", "phone": "+66 65 123 8378", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d21373705-Reviews-Yellow_Lane-Bangkok.html"}, {"name": "Vela", "area": "Ari", "source": "Tripadvisor", "rating": 4.9, "review_count": 19, "price": "฿600-1000", "food_type": "restaurant", "address": "1029/12-14 ถนน พหลโยธิน แขวงสามเสนใน เขตพญาไท, กรุงเทพมหานคร (กทม.) 10400 ไทย", "opening_hours": "N/A", "phone": "+66 92 425 4429", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d17765105-Reviews-Vela-Bangkok.html"}, {"name": "True Love Cafe", "area": "Ari", "source": "Tripadvisor", "rating": 4.1, "review_count": 304, "price": "฿600-1000", "food_type": "restaurant", "address": "153 ถนนพหลโยธิน ซอยอารีย์สัมพันธ์ 2, กรุงเทพมหานคร (กทม.) ไทย", "opening_hours": "N/A", "phone": "+66 90 101 9669", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d6827811-Reviews-True_Love_Cafe-Bangkok.html"}, {"name": "Kaffa: Brunch and Brew", "area": "Ari", "source": "Tripadvisor", "rating": 4.7, "review_count": 33, "price": "฿600-1000", "food_type": "restaurant", "address": "19, 2 Phahonyothin Rd Phaya Thai, กรุงเทพมหานคร (กทม.) 10400 ไทย", "opening_hours": "Mon: 08:00-16:00 | Tue: 08:00-16:00 | Wed: 08:00-16:00 | Thu: 08:00-16:00 | Fri: 08:00-16:00 | Sat: 08:00-16:00 | Sun: 08:00-16:00", "phone": "+66 2 102 4999", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d23419089-Reviews-Kaffa_Brunch_and_Brew-Bangkok.html"}, {"name": "Cantina Italian Kitchen (Ari)", "area": "Ari", "source": "Tripadvisor", "rating": 4.5, "review_count": 90, "price": "฿600-1000", "food_type": "restaurant", "address": "142 Rama VI Soi 30, Samsen Nai, กรุงเทพมหานคร (กทม.) 10400 ไทย", "opening_hours": "Mon: 17:00-23:30 | Tue: 17:00-23:30 | Wed: 17:00-23:30 | Thu: 17:00-23:30 | Fri: 17:00-23:30 | Sat: 17:00-23:30 | Sun: 17:00-23:30", "phone": "+66 2 038 5114", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d11916187-Reviews-Cantina_Italian_Kitchen_Ari-Bangkok.html"}, {"name": "เพเพอร์บัทเทอร์ & เดอะเบอร์เกอร์", "area": "Ari", "source": "Tripadvisor", "rating": 4.7, "review_count": 128, "price": "฿600-1000", "food_type": "restaurant", "address": "51 ซอยพหลโยธิน 5 (หน้าโรงแรม The Yard) แขวงสามเสนใน เขตพญาไท, กรุงเทพมหานคร (กทม.) 10400 ไทย", "opening_hours": "Tue: 11:00-14:00,17:00-22:00 | Wed: 11:00-14:00,17:00-22:00 | Thu: 11:00-14:00,17:00-22:00 | Fri: 11:00-14:00,17:00-22:00 | Sat: 11:00-14:00,17:00-22:00 | Sun: 11:00-22:00", "phone": "+66 81 649 1227", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d7375102-Reviews-PaperButter_The_Burger-Bangkok.html"}, {"name": "เพนกวินกินชาบู", "area": "Ari", "source": "Tripadvisor", "rating": 4.4, "review_count": 25, "price": "฿600-1000", "food_type": "restaurant", "address": "ถนนสุทธิสารวินิจฉัย ซอย 1 แขวงสามเสนใน, กรุงเทพมหานคร (กทม.) 10400 ไทย", "opening_hours": "N/A", "phone": "+66 98 919 2632", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d8734014-Reviews-Penguin_Eat_Shabu_Buffet-Bangkok.html"}, {"name": "ร้านอาหาร ส้มตำบางกอก", "area": "Ari", "source": "Tripadvisor", "rating": 4.4, "review_count": 27, "price": "฿600-1000", "food_type": "restaurant", "address": "9 Soi Ari 3 Phahon Yothin Road Samsen Nai Phaya Thai District, กรุงเทพมหานคร (กทม.) ไทย", "opening_hours": "Mon: 10:30-23:00 | Tue: 10:30-23:00 | Wed: 10:30-23:00 | Thu: 10:30-23:00 | Fri: 10:30-23:00 | Sat: 10:30-23:00 | Sun: 10:30-23:00", "phone": "+66 2 619 8659", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d3711109-Reviews-Somtum_Bangkok-Bangkok.html"}, {"name": "Truelove At Neverland", "area": "Ari", "source": "Tripadvisor", "rating": 3.9, "review_count": 67, "price": "฿600-1000", "food_type": "restaurant", "address": "153 ซอย อารีย์สัมพันธ์ 2 แขวงสามเสนใน, กรุงเทพมหานคร (กทม.) 10400 ไทย", "opening_hours": "Mon: 12:00-17:00 | Tue: 12:00-17:00 | Wed: 12:00-17:00 | Thu: 12:00-17:00 | Fri: 12:00-17:00 | Sat: 12:00-17:00 | Sun: 12:00-17:00", "phone": "+66 90 101 9669", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d14155807-Reviews-Truelove_At_Neverland-Bangkok.html"}, {"name": "โซซากุ", "area": "Ari", "source": "Tripadvisor", "rating": 4.2, "review_count": 26, "price": "฿600-1000", "food_type": "restaurant", "address": "39/1 ซอยอารีย์ 4 ซอยพหลโยธิน 7 แขวงสามเสนใน เขตพญาไท, กรุงเทพมหานคร (กทม.) 10400 ไทย", "opening_hours": "Mon: 12:00-15:00,17:00-21:00 | Wed: 11:00-15:00,17:00-22:00 | Thu: 11:00-15:00,17:00-22:00 | Fri: 11:00-15:00,17:00-22:00 | Sat: 11:00-15:00,17:00-22:00 | Sun: 12:00-15:00,17:00-22:00", "phone": "+66 2 279 2461", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d4308610-Reviews-Sousaku-Bangkok.html"}, {"name": "โร้ดเฮ้าส์ บาร์บีคิว", "area": "Thonglor", "source": "Tripadvisor", "rating": 3.8, "review_count": 317, "price": "฿600-1000", "food_type": "restaurant", "address": "942/1-4 Rama IV, Surawong Rd. Bangrak, กรุงเทพมหานคร (กทม.) 10500 ไทย", "opening_hours": "Mon: 11:00-01:00 | Tue: 11:00-01:00 | Wed: 11:00-01:00 | Thu: 11:00-01:00 | Fri: 11:00-01:00 | Sat: 11:00-01:00 | Sun: 11:00-01:00", "phone": "+66 2 236 8010", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d1212900-Reviews-Roadhouse_Barbecue-Bangkok.html"}, {"name": "ร้านเผ็ดเผ็ด", "area": "Ari", "source": "Tripadvisor", "rating": 4.3, "review_count": 15, "price": "N/A", "food_type": "restaurant", "address": "พหลโยธินซอย 8 (ซอยสายลม) แขวงสามเสนใน, กรุงเทพมหานคร (กทม.) 10400 ไทย", "opening_hours": "Mon: 11:30-20:00 | Tue: 11:30-20:00 | Wed: 11:30-20:00 | Thu: 11:30-20:00 | Fri: 11:30-20:00 | Sat: 11:30-20:00 | Sun: 11:30-20:00", "phone": "+66 98 263 5715", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d15013031-Reviews-Phed_Phed-Bangkok.html"}, {"name": "จง ติ่มซำ", "area": "Ari", "source": "Tripadvisor", "rating": 4.7, "review_count": 14, "price": "฿600-1000", "food_type": "restaurant", "address": "524/4 ถนน พหลโยธิน แขวง สามเสนใน, กรุงเทพมหานคร (กทม.) 10400 ไทย", "opening_hours": "Mon: 07:00-20:00 | Tue: 07:00-20:00 | Wed: 07:00-20:00 | Thu: 07:00-20:00 | Fri: 07:00-20:00 | Sat: 07:00-20:00 | Sun: 07:00-20:00", "phone": "+66 89 048 6908", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d14138091-Reviews-Jong_Dimsum-Bangkok.html"}, {"name": "Kid Mai Death Awareness Cafe", "area": "Ari", "source": "Tripadvisor", "rating": 4.7, "review_count": 38, "price": "฿600-1000", "food_type": "restaurant", "address": "Soi Ari 1, Phahonyothin rd., Samsen Nai, Phaya Thai, กรุงเทพมหานคร (กทม.) 10400 ไทย", "opening_hours": "Mon: 10:00-19:00 | Tue: 10:00-19:00 | Wed: 10:00-19:00 | Thu: 10:00-19:00 | Fri: 10:00-19:00 | Sat: 10:00-19:00 | Sun: 10:00-19:00", "phone": "+66 63 324 4519", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d13837987-Reviews-Kid_Mai_Death_Awareness_Cafe-Bangkok.html"}, {"name": "Baan Pueng Chom", "area": "Ari", "source": "Tripadvisor", "rating": 4.2, "review_count": 36, "price": "฿600-1000", "food_type": "restaurant", "address": "38/1, Phahon Yothin 7 Samsen Nai, Phaya Thai, กรุงเทพมหานคร (กทม.) 10400 ไทย", "opening_hours": "N/A", "phone": "+66 2 279 4204", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d3389401-Reviews-Baan_Pueng_Chom-Bangkok.html"}, {"name": "Kaizen Sushi & Hibachi", "area": "Ari", "source": "Tripadvisor", "rating": 4.2, "review_count": 101, "price": "฿600-1000", "food_type": "restaurant", "address": "308 Phayathai Road Ratchathewi, กรุงเทพมหานคร (กทม.) ไทย", "opening_hours": "Mon: 11:00-23:00 | Tue: 11:00-23:00 | Wed: 11:00-23:00 | Thu: 11:00-23:00 | Fri: 11:00-23:00 | Sat: 11:00-23:00 | Sun: 11:00-23:00", "phone": "+66 2 215 2972", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d3722586-Reviews-Kaizen_Sushi_Hibachi-Bangkok.html"}, {"name": "Ong Tong Khao Soi", "area": "Ari", "source": "Tripadvisor", "rating": 4.3, "review_count": 43, "price": "฿100-300", "food_type": "restaurant", "address": "21 พหลโยธิน ซอย แขวง สามเสนใน, กรุงเทพมหานคร (กทม.) 10400 ไทย", "opening_hours": "Mon: 10:30-20:30 | Tue: 10:30-20:30 | Wed: 10:30-20:30 | Thu: 10:30-20:30 | Fri: 10:30-20:30 | Sat: 10:30-20:30 | Sun: 10:30-20:30", "phone": "+66 2 003 5254", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d15237604-Reviews-Ong_Tong_Khao_Soi-Bangkok.html"}, {"name": "เหลา เหลา", "area": "Ari", "source": "Tripadvisor", "rating": 4.1, "review_count": 58, "price": "฿600-1000", "food_type": "restaurant", "address": "1271/6-7 ถนนพหลโยธิน Opposite Kasikorn Bank Phaholyotin Branch, กรุงเทพมหานคร (กทม.) ไทย", "opening_hours": "N/A", "phone": "+66 2 271 4260", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d1025399-Reviews-Lao_Lao-Bangkok.html"}, {"name": "Mott 32 Bangkok", "area": "Ari", "source": "Tripadvisor", "rating": 4.9, "review_count": 249, "price": "฿600-1000", "food_type": "restaurant", "address": "114 Narathiwas Road The Standard, Bangkok Mahanakhon, 2nd Floor, กรุงเทพมหานคร (กทม.) 10500 ไทย", "opening_hours": "Mon: 11:30-14:30,17:30-22:30 | Tue: 11:30-14:30,17:30-22:30 | Wed: 11:30-14:30,17:30-22:30 | Thu: 11:30-14:30,17:30-22:30 | Fri: 11:30-14:30,17:30-22:30 | Sat: 11:30-14:30,17:30-22:30 | Sun: 11:30-14:30,17:30-22:30", "phone": "+66 2 085 8888", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d25340485-Reviews-Mott_32_Bangkok-Bangkok.html"}, {"name": "Gigi Eatery Asoke", "area": "Asok", "source": "Google Maps", "rating": 4.8, "review_count": 3335, "price": "฿1000+", "food_type": "ร้านอาหารอิตาเลียน", "address": "28 ซอย สุขุมวิท 19 แขวงคลองตันเหนือ เขตวัฒนา กรุงเทพมหานคร 10110 ไทย", "opening_hours": "วันพุธ: 7:00 to 0:00 | วันพฤหัสบดี: 7:00 to 0:00 | วันศุกร์: 7:00 to 0:00 | วันเสาร์: 7:00 to 0:00 | วันอาทิตย์: 7:00 to 0:00 | วันจันทร์: 7:00 to 0:00 | วันอังคาร: 7:00 to 0:00", "phone": "+66 61 995 6060", "url": "https://www.google.com/maps/search/?api=1&query=Gigi%20Eatery%20Asoke&query_place_id=ChIJw5WEJoqf4jARFC4PiDtFCzc"}, {"name": "อีท แอม อา อาคาร 253 อโศก", "area": "Asok", "source": "Google Maps", "rating": 4.5, "review_count": 1441, "price": "฿300-600", "food_type": "ร้านสเต็ก", "address": "253 ชั้น G ซอย อโศก แขวงคลองเตยเหนือ เขตวัฒนา กรุงเทพมหานคร 10110 ไทย", "opening_hours": "วันพุธ: 9:00 to 22:00 | วันพฤหัสบดี: 9:00 to 22:00 | วันศุกร์: 9:00 to 23:00 | วันเสาร์: 9:00 to 23:00 | วันอาทิตย์: 9:00 to 23:00 | วันจันทร์: 9:00 to 22:00 | วันอังคาร: 9:00 to 22:00", "phone": "+66 92 661 1656", "url": "https://www.google.com/maps/search/?api=1&query=%E0%B8%AD%E0%B8%B5%E0%B8%97%20%E0%B9%81%E0%B8%AD%E0%B8%A1%20%E0%B8%AD%E0%B8%B2%20%E0%B8%AD%E0%B8%B2%E0%B8%84%E0%B8%B2%E0%B8%A3%20253%20%E0%B8%AD%E0%B9%82%E0%B8%A8%E0%B8%81&query_place_id=ChIJtz6LEiOf4jARORWzcrLDLBc"}, {"name": "เสวย เทอร์มินอล 21 อโศก", "area": "Asok", "source": "Google Maps", "rating": 4.6, "review_count": 3620, "price": "฿1000+", "food_type": "ภัตตาคารอาหารทะเล", "address": "ห้องเลขที่ SH-5 ศูนย์การค้าเทอร์มินอล 21 015 ชั้นที่ 5 อโศก 88 แขวงคลองเตยเหนือ เขตวัฒนา กรุงเทพมหานคร 10110 ไทย", "opening_hours": "วันพุธ: 10:00 to 22:00 | วันพฤหัสบดี: 10:00 to 22:00 | วันศุกร์: 10:00 to 22:00 | วันเสาร์: 10:00 to 22:00 | วันอาทิตย์: 10:00 to 22:00 | วันจันทร์: 10:00 to 22:00 | วันอังคาร: 10:00 to 22:00", "phone": "+66 64 017 0237", "url": "https://www.google.com/maps/search/?api=1&query=%E0%B9%80%E0%B8%AA%E0%B8%A7%E0%B8%A2%20%E0%B9%80%E0%B8%97%E0%B8%AD%E0%B8%A3%E0%B9%8C%E0%B8%A1%E0%B8%B4%E0%B8%99%E0%B8%AD%E0%B8%A5%2021%20%E0%B8%AD%E0%B9%82%E0%B8%A8%E0%B8%81&query_place_id=ChIJ1afT-oif4jARvl-Fq22OydQ"}, {"name": "Hachicken Ramen (Terminal21 Asok)", "area": "Asok", "source": "Google Maps", "rating": 4.7, "review_count": 1202, "price": "฿100-300", "food_type": "ร้านอาหารราเมน", "address": "Unit 4022A, 4th floor, 88 ซอย สุขุมวิท 19 แขวงคลองเตยเหนือ เขตวัฒนา กรุงเทพมหานคร 10110 ไทย", "opening_hours": "วันพุธ: 10:00 to 22:00 | วันพฤหัสบดี: 10:00 to 22:00 | วันศุกร์: 10:00 to 22:00 | วันเสาร์: 10:00 to 22:00 | วันอาทิตย์: 10:00 to 22:00 | วันจันทร์: 10:00 to 22:00 | วันอังคาร: 10:00 to 22:00", "phone": "+66 82 980 0061", "url": "https://www.google.com/maps/search/?api=1&query=Hachicken%20Ramen%20(Terminal21%20Asok)&query_place_id=ChIJZVy5gm6f4jARZNIAsJKyW30"}, {"name": "Firepork - Terminal21 Asok", "area": "Asok", "source": "Google Maps", "rating": 4.8, "review_count": 168, "price": "฿300-600", "food_type": "ร้านอาหาร", "address": "5th floor Terminal21 Asok 88 ซอย สุขุมวิท 19 แขวงคลองเตยเหนือ เขตทวีวัฒนา กรุงเทพมหานคร 10110 ไทย", "opening_hours": "วันพุธ: 10:00 to 22:00 | วันพฤหัสบดี: 10:00 to 22:00 | วันศุกร์: 10:00 to 22:00 | วันเสาร์: 10:00 to 22:00 | วันอาทิตย์: 10:00 to 22:00 | วันจันทร์: 10:00 to 22:00 | วันอังคาร: 10:00 to 22:00", "phone": "+66 80 800 5838", "url": "https://www.google.com/maps/search/?api=1&query=Firepork%20-%20Terminal21%20Asok&query_place_id=ChIJWxTOhuKf4jARcTBCzVIB5n8"}, {"name": "ผัดไทยพลีส Pad Thai Please - Terminal 21 Asok", "area": "Asok", "source": "Google Maps", "rating": 4.9, "review_count": 207, "price": "฿300-600", "food_type": "N/A", "address": "เลขที่ 88 ห้องเลขที่ SH4017 ชั้น 4 Terminal 21 21 ซอย สุขุมวิท 19 แขวงคลองเตยเหนือ เขตวัฒนา กรุงเทพมหานคร 10110 ไทย", "opening_hours": "วันพุธ: 11:00 to 21:30 | วันพฤหัสบดี: 11:00 to 21:30 | วันศุกร์: 11:00 to 21:30 | วันเสาร์: 11:00 to 21:30 | วันอาทิตย์: 11:00 to 21:30 | วันจันทร์: 11:00 to 21:30 | วันอังคาร: 11:00 to 21:30", "phone": "+66 2 073 0399", "url": "https://www.google.com/maps/search/?api=1&query=%E0%B8%9C%E0%B8%B1%E0%B8%94%E0%B9%84%E0%B8%97%E0%B8%A2%E0%B8%9E%E0%B8%A5%E0%B8%B5%E0%B8%AA%20Pad%20Thai%20Please%20-%20Terminal%2021%20Asok&query_place_id=ChIJH3n2ZFGf4jAR3sLvZam_TDE"}, {"name": "BARTELS Asok - Sourdough Sandwiches, Coffee & Juicery", "area": "Asok", "source": "Google Maps", "rating": 4.8, "review_count": 2429, "price": "฿300-600", "food_type": "ภัตตาคารอาหารเช้าและกลางวัน", "address": "199/9-11 ถ. สุขุมวิท แขวงคลองเตยเหนือ เขตวัฒนา กรุงเทพมหานคร 10110 ไทย", "opening_hours": "วันพุธ: 7:00 to 18:00 | วันพฤหัสบดี: 7:00 to 18:00 | วันศุกร์: 7:00 to 18:00 | วันเสาร์: 7:00 to 18:00 | วันอาทิตย์: 7:00 to 18:00 | วันจันทร์: 7:00 to 18:00 | วันอังคาร: 7:00 to 18:00", "phone": "+66 95 019 2134", "url": "https://www.google.com/maps/search/?api=1&query=BARTELS%20Asok%20-%20Sourdough%20Sandwiches%2C%20Coffee%20%26%20Juicery&query_place_id=ChIJa7RbIkGf4jARxc9xrSROCts"}, {"name": "ปิง หูฉลาม อโศก", "area": "Asok", "source": "Google Maps", "rating": 4.6, "review_count": 1593, "price": "฿600-1000", "food_type": "ภัตตาคารอาหารจีน", "address": "137/3 ซอย สุขุมวิท 21 North Klongtoey เขตวัฒนา กรุงเทพมหานคร 10110 ไทย", "opening_hours": "วันพุธ: 11:00 to 22:00 | วันพฤหัสบดี: 11:00 to 22:00 | วันศุกร์: 11:00 to 22:00 | วันเสาร์: 11:00 to 22:00 | วันอาทิตย์: 11:00 to 22:00 | วันจันทร์: 11:00 to 22:00 | วันอังคาร: 11:00 to 22:00", "phone": "+66 2 661 7860", "url": "https://www.google.com/maps/search/?api=1&query=%E0%B8%9B%E0%B8%B4%E0%B8%87%20%E0%B8%AB%E0%B8%B9%E0%B8%89%E0%B8%A5%E0%B8%B2%E0%B8%A1%20%E0%B8%AD%E0%B9%82%E0%B8%A8%E0%B8%81&query_place_id=ChIJnfQQnAGf4jARkEY6N_nZR74"}, {"name": "Sunrise Tacos MEXICAN GRILL", "area": "Asok", "source": "Google Maps", "rating": 4.7, "review_count": 5001, "price": "฿300-600", "food_type": "ภัตตาคารอาหารเม็กซิกัน", "address": "88 ซอย สุขุมวิท 19 แขวงคลองเตยเหนือ เขตทวีวัฒนา กรุงเทพมหานคร 10110 ไทย", "opening_hours": "วันพุธ: 10:00 to 22:00 | วันพฤหัสบดี: 10:00 to 22:00 | วันศุกร์: 10:00 to 22:00 | วันเสาร์: 10:00 to 22:00 | วันอาทิตย์: 10:00 to 22:00 | วันจันทร์: 10:00 to 22:00 | วันอังคาร: 10:00 to 22:00", "phone": "+66 90 210 5940", "url": "https://www.google.com/maps/search/?api=1&query=Sunrise%20Tacos%20MEXICAN%20GRILL&query_place_id=ChIJxaq1oeOe4jAROvyHinpPC-Q"}, {"name": "Restaurant Thai", "area": "Asok", "source": "Google Maps", "rating": 4.1, "review_count": 160, "price": "฿100-300", "food_type": "ภัตตาคารอาหารไทย", "address": "494 ถ. อโศก - ดินแดง แขวงดินแดง เขตดินแดง กรุงเทพมหานคร 10400 ไทย", "opening_hours": "วันพุธ: 11:00 to 1:00 | วันพฤหัสบดี: 11:00 to 1:00 | วันศุกร์: 11:00 to 1:00 | วันเสาร์: 11:00 to 1:00 | วันอาทิตย์: 11:00 to 1:00 | วันจันทร์: 11:00 to 1:00 | วันอังคาร: 11:00 to 1:00", "phone": "+66 93 414 6597", "url": "https://www.google.com/maps/search/?api=1&query=Restaurant%20Thai&query_place_id=ChIJr_hoVI2e4jARIf2gzA_MoCs"}, {"name": "ASOK PETHOUSE CAT CAFE", "area": "Asok", "source": "Google Maps", "rating": 4.7, "review_count": 1538, "price": "฿300-600", "food_type": "คาเฟ่แมว", "address": "2FL, อาคารพี.เอส.ทาวเวอร์ 36/18 ซอย สุขุมวิท 21 Watthana, วัฒนา กรุงเทพมหานคร 10110 ไทย", "opening_hours": "วันพุธ: 8:00 to 20:00 | วันพฤหัสบดี: 8:00 to 20:00 | วันศุกร์: 8:00 to 20:00 | วันเสาร์: 8:00 to 20:00 | วันอาทิตย์: 8:00 to 20:00 | วันจันทร์: 8:00 to 20:00 | วันอังคาร: 8:00 to 20:00", "phone": "+66 90 228 2924", "url": "https://www.google.com/maps/search/?api=1&query=ASOK%20PETHOUSE%20CAT%20CAFE&query_place_id=ChIJD-fYAfCf4jARNfOfSo_aAo4"}, {"name": "Hokkaido Yakidon Baan Kampu Asoke", "area": "Asok", "source": "Google Maps", "rating": 4.8, "review_count": 66, "price": "฿100-300", "food_type": "ภัตตาคารอาหารญี่ปุ่น", "address": "ชั้น 2, โครงการบ้านก้ามปู อโศก, Baan Kampu Asoke 2nd floor, 68 ซอย สุขุมวิท 21 แขวงคลองเตยเหนือ เขตวัฒนา กรุงเทพมหานคร 10110 ไทย", "opening_hours": "วันพุธ: 11:00 to 21:00 | วันพฤหัสบดี: 11:00 to 21:00 | วันศุกร์: 11:00 to 21:00 | วันเสาร์: ปิดทำการ | วันอาทิตย์: 11:00 to 20:00 | วันจันทร์: 11:00 to 21:00 | วันอังคาร: 11:00 to 21:00", "phone": "+66 91 772 9358", "url": "https://www.google.com/maps/search/?api=1&query=Hokkaido%20Yakidon%20Baan%20Kampu%20Asoke&query_place_id=ChIJk34ex9uf4jARNSqWLFu7PYw"}, {"name": "แมดโมอา อโศก Mad moa asok", "area": "Asok", "source": "Google Maps", "rating": 4.8, "review_count": 159, "price": "฿300-600", "food_type": "ร้านอาหารตะวันตก", "address": "139 สุขุมวิท 21 ซอย 1 แขวงคลองเตยเหนือ เขตวัฒนา กรุงเทพมหานคร 10110 ไทย", "opening_hours": "วันพุธ: 11:00 to 14:00, 17:00 to 22:00 | วันพฤหัสบดี: 11:00 to 14:00, 17:00 to 22:00 | วันศุกร์: 11:00 to 14:00, 17:00 to 22:00 | วันเสาร์: 17:00 to 22:00 | วันอาทิตย์: ปิดทำการ | วันจันทร์: 11:00 to 14:00, 17:00 to 22:00 | วันอังคาร: 11:00 to 14:00, 17:00 to 22:00", "phone": "+66 95 720 3826", "url": "https://www.google.com/maps/search/?api=1&query=%E0%B9%81%E0%B8%A1%E0%B8%94%E0%B9%82%E0%B8%A1%E0%B8%AD%E0%B8%B2%20%E0%B8%AD%E0%B9%82%E0%B8%A8%E0%B8%81%20Mad%20moa%20asok&query_place_id=ChIJgX-SHpqf4jARTZxC5FBJGwQ"}, {"name": "โรซาโน อิตาเลียน คูซีน", "area": "Asok", "source": "Google Maps", "rating": 4.5, "review_count": 1137, "price": "฿600-1000", "food_type": "ร้านอาหารอิตาเลียน", "address": "167 Sukhumvit Soi 21, ถนน อโศกมนตรี แขวงคลองเตยเหนือ เขตวัฒนา กรุงเทพมหานคร 10110 ไทย", "opening_hours": "วันพุธ: 11:30 to 14:00, 17:00 to 23:00 | วันพฤหัสบดี: 11:30 to 14:00, 17:00 to 23:00 | วันศุกร์: 11:30 to 14:00, 17:00 to 23:00 | วันเสาร์: 11:30 to 14:00, 17:00 to 23:00 | วันอาทิตย์: 11:30 to 14:00, 17:00 to 23:00 | วันจันทร์: 11:30 to 14:00, 17:00 to 23:00 | วันอังคาร: 11:30 to 14:00, 17:00 to 23:00", "phone": "+66 2 661 7449", "url": "https://www.google.com/maps/search/?api=1&query=%E0%B9%82%E0%B8%A3%E0%B8%8B%E0%B8%B2%E0%B9%82%E0%B8%99%20%E0%B8%AD%E0%B8%B4%E0%B8%95%E0%B8%B2%E0%B9%80%E0%B8%A5%E0%B8%B5%E0%B8%A2%E0%B8%99%20%E0%B8%84%E0%B8%B9%E0%B8%8B%E0%B8%B5%E0%B8%99&query_place_id=ChIJge5RZOOe4jARzWYZ3jGvKbA"}, {"name": "Madam Saranair Thai Food Restaurant", "area": "Asok", "source": "Google Maps", "rating": 4.5, "review_count": 2189, "price": "฿600-1000", "food_type": "ภัตตาคารอาหารไทย", "address": "139/1 Soi Sukhumvit 21 (Asoke Soi 1 sub-district, เขตวัฒนา กรุงเทพมหานคร 10110 ไทย", "opening_hours": "วันพุธ: 11:00 to 23:00 | วันพฤหัสบดี: 11:00 to 23:00 | วันศุกร์: 11:00 to 23:00 | วันเสาร์: 11:00 to 23:00 | วันอาทิตย์: 11:00 to 23:00 | วันจันทร์: 11:00 to 23:00 | วันอังคาร: 11:00 to 23:00", "phone": "+66 2 661 7984", "url": "https://www.google.com/maps/search/?api=1&query=Madam%20Saranair%20Thai%20Food%20Restaurant&query_place_id=ChIJ1bV7lOSe4jARZfwCIKXKyNU"}, {"name": "ร้านคานิเทงโกคุ สาขาอโศก", "area": "Asok", "source": "Google Maps", "rating": 4.9, "review_count": 388, "price": "฿1000+", "food_type": "ภัตตาคารอาหารญี่ปุ่น", "address": "21, 38 ซ. สุขุมวิท 23 แขวงคลองเตยเหนือ เขตวัฒนา กรุงเทพมหานคร 10110 ไทย", "opening_hours": "วันพุธ: 11:30 to 23:00 | วันพฤหัสบดี: 11:30 to 23:00 | วันศุกร์: 15:00 to 23:00 | วันเสาร์: 11:30 to 23:00 | วันอาทิตย์: 11:30 to 23:00 | วันจันทร์: 11:30 to 23:00 | วันอังคาร: 11:30 to 23:00", "phone": "+66 80 074 3032", "url": "https://www.google.com/maps/search/?api=1&query=%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%84%E0%B8%B2%E0%B8%99%E0%B8%B4%E0%B9%80%E0%B8%97%E0%B8%87%E0%B9%82%E0%B8%81%E0%B8%84%E0%B8%B8%20%E0%B8%AA%E0%B8%B2%E0%B8%82%E0%B8%B2%E0%B8%AD%E0%B9%82%E0%B8%A8%E0%B8%81&query_place_id=ChIJ531oLMOf4jARBFnqHG-unag"}, {"name": "Thai Thai Boat Noodles Terminal 21 Asok", "area": "Asok", "source": "Google Maps", "rating": 4.5, "review_count": 631, "price": "฿300-600", "food_type": "ร้านก๋วยเตี๋ยว", "address": "เทอร์มินอล, ห้องเลขที่ SH4017 ชั้น 4 เลขที่ 88, 21 ซอย สุขุมวิท 19 แขวงคลองเตยเหนือ เขตวัฒนา กรุงเทพมหานคร 10110 ไทย", "opening_hours": "วันพุธ: 11:00 to 21:30 | วันพฤหัสบดี: 11:00 to 21:30 | วันศุกร์: 11:00 to 21:30 | วันเสาร์: 11:00 to 21:30 | วันอาทิตย์: 11:00 to 21:30 | วันจันทร์: 11:00 to 21:30 | วันอังคาร: 11:00 to 21:30", "phone": "+66 2 073 0399", "url": "https://www.google.com/maps/search/?api=1&query=Thai%20Thai%20Boat%20Noodles%20Terminal%2021%20Asok&query_place_id=ChIJ4zwpQ2af4jAReRREq3JTfCY"}, {"name": "เคนชิน อิซากายะ สาขาอโศก", "area": "Asok", "source": "Google Maps", "rating": 4.3, "review_count": 1693, "price": "฿300-600", "food_type": "ร้านอาหารอิซาคายะ", "address": "155 ถนน อโศกมนตรี แขวงคลองเตยเหนือ เขตวัฒนา กรุงเทพมหานคร 10110 ไทย", "opening_hours": "วันพุธ: 11:00 to 0:00 | วันพฤหัสบดี: 11:00 to 0:00 | วันศุกร์: 11:00 to 0:00 | วันเสาร์: 11:00 to 0:00 | วันอาทิตย์: 11:00 to 0:00 | วันจันทร์: 11:00 to 0:00 | วันอังคาร: 11:00 to 0:00", "phone": "+66 2 661 6202", "url": "https://www.google.com/maps/search/?api=1&query=%E0%B9%80%E0%B8%84%E0%B8%99%E0%B8%8A%E0%B8%B4%E0%B8%99%20%E0%B8%AD%E0%B8%B4%E0%B8%8B%E0%B8%B2%E0%B8%81%E0%B8%B2%E0%B8%A2%E0%B8%B0%20%E0%B8%AA%E0%B8%B2%E0%B8%82%E0%B8%B2%E0%B8%AD%E0%B9%82%E0%B8%A8%E0%B8%81&query_place_id=ChIJRbk96-Se4jAR_aE0uywzTRM"}, {"name": "Shakariki 432 ASOKE", "area": "Asok", "source": "Google Maps", "rating": 4.5, "review_count": 1262, "price": "฿1000+", "food_type": "ร้านอาหารอิซาคายะ", "address": "อาคารพี เอส ทาวเวอร์ 36/1-2 ซอย สุขุมวิท 21 แขวงคลองเตยเหนือ เขตวัฒนา กรุงเทพมหานคร 10110 ไทย", "opening_hours": "วันพุธ: 10:00 to 4:00 | วันพฤหัสบดี: 10:00 to 4:00 | วันศุกร์: 10:00 to 4:00 | วันเสาร์: 10:00 to 4:00 | วันอาทิตย์: 10:00 to 4:00 | วันจันทร์: 10:00 to 4:00 | วันอังคาร: 10:00 to 4:00", "phone": "+66 2 664 0927", "url": "https://www.google.com/maps/search/?api=1&query=Shakariki%20432%20ASOKE&query_place_id=ChIJYTMe3OSe4jARDGRkvAw7SMc"}, {"name": "getfresh at Terminal 21 Asok", "area": "Asok", "source": "Google Maps", "rating": 4.8, "review_count": 576, "price": "฿300-600", "food_type": "ร้านอาหาร", "address": "หอง เลขที่ 5020 ถ. สุขุมวิท แขวง คลองเตย เขตคลองเตย กรุงเทพมหานคร 10110 ไทย", "opening_hours": "วันพุธ: 10:00 to 22:00 | วันพฤหัสบดี: 10:00 to 22:00 | วันศุกร์: 10:00 to 22:00 | วันเสาร์: 10:00 to 22:00 | วันอาทิตย์: 10:00 to 22:00 | วันจันทร์: 10:00 to 22:00 | วันอังคาร: 10:00 to 22:00", "phone": "+66 81 247 8982", "url": "https://www.google.com/maps/search/?api=1&query=getfresh%20at%20Terminal%2021%20Asok&query_place_id=ChIJSXzxqMKf4jARtTmd_SuaE2M"}, {"name": "คุณศรีแหนมเนือง ข้าวเกรียบปากหม้อ สาขาอโศก-ดินแดง", "area": "Asok", "source": "Google Maps", "rating": 5.0, "review_count": 3, "price": "N/A", "food_type": "ภัตตาคารอาหารเวียดนาม", "address": "502/104 ถ. อโศก - ดินแดง แขวงดินแดง เขตดินแดง กรุงเทพมหานคร 10400 ไทย", "opening_hours": "วันพุธ: 10:00 to 21:00 | วันพฤหัสบดี: 10:00 to 21:00 | วันศุกร์: 10:00 to 23:00 | วันเสาร์: 10:00 to 23:00 | วันอาทิตย์: 10:00 to 23:00 | วันจันทร์: 10:00 to 21:00 | วันอังคาร: 10:00 to 21:00", "phone": "+66 61 926 6626", "url": "https://www.google.com/maps/search/?api=1&query=%E0%B8%84%E0%B8%B8%E0%B8%93%E0%B8%A8%E0%B8%A3%E0%B8%B5%E0%B9%81%E0%B8%AB%E0%B8%99%E0%B8%A1%E0%B9%80%E0%B8%99%E0%B8%B7%E0%B8%AD%E0%B8%87%20%E0%B8%82%E0%B9%89%E0%B8%B2%E0%B8%A7%E0%B9%80%E0%B8%81%E0%B8%A3%E0%B8%B5%E0%B8%A2%E0%B8%9A%E0%B8%9B%E0%B8%B2%E0%B8%81%E0%B8%AB%E0%B8%A1%E0%B9%89%E0%B8%AD%20%E0%B8%AA%E0%B8%B2%E0%B8%82%E0%B8%B2%E0%B8%AD%E0%B9%82%E0%B8%A8%E0%B8%81-%E0%B8%94%E0%B8%B4%E0%B8%99%E0%B9%81%E0%B8%94%E0%B8%87&query_place_id=ChIJBw5gMRqf4jARmRN2X_6DW0o"}, {"name": "ร้านสันติ ตลาดอยู่เจริญ", "area": "Asok", "source": "Google Maps", "rating": 4.1, "review_count": 23, "price": "N/A", "food_type": "ภัตตาคารอาหารไทย", "address": "500, 11 ถ. อโศก - ดินแดง แขวงดินแดง เขตดินแดง กรุงเทพมหานคร 10400 ไทย", "opening_hours": "วันพุธ: 10:00 to 0:00 | วันพฤหัสบดี: 10:00 to 0:00 | วันศุกร์: 10:00 to 0:00 | วันเสาร์: 10:00 to 0:00 | วันอาทิตย์: 10:00 to 0:00 | วันจันทร์: 10:00 to 0:00 | วันอังคาร: 10:00 to 0:00", "phone": "N/A", "url": "https://www.google.com/maps/search/?api=1&query=%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%AA%E0%B8%B1%E0%B8%99%E0%B8%95%E0%B8%B4%20%E0%B8%95%E0%B8%A5%E0%B8%B2%E0%B8%94%E0%B8%AD%E0%B8%A2%E0%B8%B9%E0%B9%88%E0%B9%80%E0%B8%88%E0%B8%A3%E0%B8%B4%E0%B8%8D&query_place_id=ChIJGXh8UI2e4jARKtvyu7TogHQ"}, {"name": "Asoka", "area": "Asok", "source": "Google Maps", "rating": 3.9, "review_count": 610, "price": "฿300-600", "food_type": "ภัตตาคารอาหารอินเดีย", "address": "84 ถนน เทียมร่วมมิตร แขวงห้วยขวาง เขตห้วยขวาง กรุงเทพมหานคร 10320 ไทย", "opening_hours": "วันพุธ: 12:00 to 15:00, 19:30 to 22:30 | วันพฤหัสบดี: 12:00 to 15:00, 19:30 to 22:30 | วันศุกร์: 12:00 to 15:00, 19:30 to 22:30 | วันเสาร์: 12:00 to 15:00, 19:30 to 22:30 | วันอาทิตย์: 12:00 to 15:00, 19:30 to 22:30 | วันจันทร์: 12:00 to 15:00, 19:30 to 22:30 | วันอังคาร: 12:00 to 15:00, 19:30 to 22:30", "phone": "+66 86 313 1345", "url": "https://www.google.com/maps/search/?api=1&query=Asoka&query_place_id=ChIJn5vZ02Se4jARnArKPRNj3w0"}, {"name": "นาราไทย คูซีน", "area": "Asok", "source": "Google Maps", "rating": 4.7, "review_count": 1134, "price": "฿1000+", "food_type": "ภัตตาคารอาหารไทย", "address": "Rm. 3054-55, Fl.3 Terminal 21, 88 ซอย สุขุมวิท 19 แขวงคลองเตยเหนือ เขตวัฒนา กรุงเทพมหานคร 10110 ไทย", "opening_hours": "วันพุธ: 10:00 to 22:00 | วันพฤหัสบดี: 10:00 to 22:00 | วันศุกร์: 10:00 to 22:00 | วันเสาร์: 10:00 to 22:00 | วันอาทิตย์: 10:00 to 22:00 | วันจันทร์: 10:00 to 22:00 | วันอังคาร: 10:00 to 22:00", "phone": "+66 2 004 2565", "url": "https://www.google.com/maps/search/?api=1&query=%E0%B8%99%E0%B8%B2%E0%B8%A3%E0%B8%B2%E0%B9%84%E0%B8%97%E0%B8%A2%20%E0%B8%84%E0%B8%B9%E0%B8%8B%E0%B8%B5%E0%B8%99&query_place_id=ChIJ5UUPyu6f4jARzil2TMt0IZg"}, {"name": "กิติชัย", "area": "Asok", "source": "Google Maps", "rating": 4.5, "review_count": 48, "price": "N/A", "food_type": "ร้านอาหาร", "address": "86 ถ. อโศก - ดินแดง แขวงดินแดง เขตดินแดง กรุงเทพมหานคร 10400 ไทย", "opening_hours": "วันพุธ: 10:10 to 22:00 | วันพฤหัสบดี: 10:10 to 22:00 | วันศุกร์: 10:10 to 22:00 | วันเสาร์: 10:10 to 22:00 | วันอาทิตย์: 10:10 to 22:00 | วันจันทร์: 10:10 to 22:00 | วันอังคาร: 10:10 to 22:00", "phone": "+66 81 916 9979", "url": "https://www.google.com/maps/search/?api=1&query=%E0%B8%81%E0%B8%B4%E0%B8%95%E0%B8%B4%E0%B8%8A%E0%B8%B1%E0%B8%A2&query_place_id=ChIJl0Ov57ue4jARI-JmmYGscs8"}, {"name": "ลุงใหญ่ ไทย อีสาน", "area": "Asok", "source": "Google Maps", "rating": 4.5, "review_count": 622, "price": "฿300-600", "food_type": "ภัตตาคารอาหารไทย", "address": "532 ถ. อโศก - ดินแดง แขวงดินแดง เขตดินแดง กรุงเทพมหานคร 10400 ไทย", "opening_hours": "วันพุธ: 11:00 to 22:00 | วันพฤหัสบดี: 11:00 to 22:00 | วันศุกร์: 11:00 to 22:00 | วันเสาร์: 11:00 to 22:00 | วันอาทิตย์: 11:00 to 22:00 | วันจันทร์: 11:00 to 22:00 | วันอังคาร: 11:00 to 22:00", "phone": "+66 2 642 4087", "url": "https://www.google.com/maps/search/?api=1&query=%E0%B8%A5%E0%B8%B8%E0%B8%87%E0%B9%83%E0%B8%AB%E0%B8%8D%E0%B9%88%20%E0%B9%84%E0%B8%97%E0%B8%A2%20%E0%B8%AD%E0%B8%B5%E0%B8%AA%E0%B8%B2%E0%B8%99&query_place_id=ChIJu2mL-7ue4jARWOPADIp6nUU"}, {"name": "ร้านขาวสะอาด พ.ศ.๒๕๒๖ (Khao Sa-Ard)", "area": "Asok", "source": "Google Maps", "rating": 4.7, "review_count": 79, "price": "N/A", "food_type": "ร้านอาหาร", "address": "14 ถ. อโศก - ดินแดง แขวงดินแดง เขตดินแดง กรุงเทพมหานคร 10400 ไทย", "opening_hours": "วันพุธ: 16:30 to 0:00 | วันพฤหัสบดี: 16:30 to 0:00 | วันศุกร์: 16:30 to 0:00 | วันเสาร์: 16:30 to 0:00 | วันอาทิตย์: 16:30 to 0:00 | วันจันทร์: 16:30 to 0:00 | วันอังคาร: 16:30 to 0:00", "phone": "+66 2 245 2594", "url": "https://www.google.com/maps/search/?api=1&query=%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%82%E0%B8%B2%E0%B8%A7%E0%B8%AA%E0%B8%B0%E0%B8%AD%E0%B8%B2%E0%B8%94%20%E0%B8%9E.%E0%B8%A8.%E0%B9%92%E0%B9%95%E0%B9%92%E0%B9%96%20(Khao%20Sa-Ard)&query_place_id=ChIJIQdQJLye4jARadRK99qOu1E"}, {"name": "Keang Hom-แกงหอม", "area": "Asok", "source": "Google Maps", "rating": 5.0, "review_count": 1, "price": "N/A", "food_type": "ร้านอาหาร", "address": "ดินเเดง 34 ถ. อโศก - ดินแดง แขวงดินแดง เขตดินแดง กรุงเทพมหานคร 10400 ไทย", "opening_hours": "วันพุธ: 11:30 to 21:00 | วันพฤหัสบดี: 11:30 to 21:00 | วันศุกร์: 11:30 to 21:00 | วันเสาร์: 11:30 to 21:00 | วันอาทิตย์: 11:30 to 21:00 | วันจันทร์: 11:30 to 21:00 | วันอังคาร: 11:30 to 21:00", "phone": "+66 88 624 9290", "url": "https://www.google.com/maps/search/?api=1&query=Keang%20Hom-%E0%B9%81%E0%B8%81%E0%B8%87%E0%B8%AB%E0%B8%AD%E0%B8%A1&query_place_id=ChIJJRUV41if4jARe77r-1pNSW4"}, {"name": "ทวีป จันทร์หอม", "area": "Asok", "source": "Google Maps", "rating": 5.0, "review_count": 1, "price": "N/A", "food_type": "ร้านอาหาร", "address": "40, 37 ถ. อโศก - ดินแดง แขวงสามเสนใน เขตพญาไท กรุงเทพมหานคร 10400 ไทย", "opening_hours": "วันพุธ: 10:00 to 20:30 | วันพฤหัสบดี: 10:00 to 20:30 | วันศุกร์: 10:00 to 20:30 | วันเสาร์: 10:00 to 20:30 | วันอาทิตย์: 10:00 to 20:30 | วันจันทร์: 10:00 to 20:30 | วันอังคาร: 10:00 to 20:30", "phone": "N/A", "url": "https://www.google.com/maps/search/?api=1&query=%E0%B8%97%E0%B8%A7%E0%B8%B5%E0%B8%9B%20%E0%B8%88%E0%B8%B1%E0%B8%99%E0%B8%97%E0%B8%A3%E0%B9%8C%E0%B8%AB%E0%B8%AD%E0%B8%A1&query_place_id=ChIJGXsZtXif4jARFa81amMHBCQ"}, {"name": "หนุ่มเมือง - noom mueang", "area": "Asok", "source": "Google Maps", "rating": 5.0, "review_count": 1, "price": "N/A", "food_type": "ร้านอาหาร", "address": "99 146 ถ. อโศก - ดินแดง แขวงสามเสนใน เขตพญาไท กรุงเทพมหานคร 10400 ไทย", "opening_hours": "N/A", "phone": "+66 81 763 2902", "url": "https://www.google.com/maps/search/?api=1&query=%E0%B8%AB%E0%B8%99%E0%B8%B8%E0%B9%88%E0%B8%A1%E0%B9%80%E0%B8%A1%E0%B8%B7%E0%B8%AD%E0%B8%87%20-%20noom%20mueang&query_place_id=ChIJlYhQgUif4jARObFXBUVYNLE"}, {"name": "ตำสยาม ไอคอนสยาม Tam Siam Iconsiam", "area": "Siam", "source": "Google Maps", "rating": 4.8, "review_count": 342, "price": "฿300-600", "food_type": "ภัตตาคารอาหารไทย", "address": "299 ห้างไอคอนสยามชั้น G แขวงคลองต้นไทร คลองสาน กรุงเทพมหานคร 10600 ไทย", "opening_hours": "วันพุธ: 10:00 to 22:00 | วันพฤหัสบดี: 10:00 to 22:00 | วันศุกร์: 10:00 to 22:00 | วันเสาร์: 10:00 to 22:00 | วันอาทิตย์: 10:00 to 22:00 | วันจันทร์: 10:00 to 22:00 | วันอังคาร: 10:00 to 22:00", "phone": "+66 64 550 0019", "url": "https://www.google.com/maps/search/?api=1&query=%E0%B8%95%E0%B8%B3%E0%B8%AA%E0%B8%A2%E0%B8%B2%E0%B8%A1%20%E0%B9%84%E0%B8%AD%E0%B8%84%E0%B8%AD%E0%B8%99%E0%B8%AA%E0%B8%A2%E0%B8%B2%E0%B8%A1%20Tam%20Siam%20Iconsiam&query_place_id=ChIJEck0Et-Z4jARfqyPoGcHCZ8"}, {"name": "อิษยา สยามมิส คลับ", "area": "Siam", "source": "Google Maps", "rating": 4.6, "review_count": 1495, "price": "฿1000+", "food_type": "ภัตตาคารอาหารแบบหรูหรา", "address": "4 ซอย เชื้อเพลิง 2 แขวงทุ่งมหาเมฆ เขตสาทร กรุงเทพมหานคร 10120 ไทย", "opening_hours": "วันพุธ: 11:30 to 14:30, 17:00 to 22:30 | วันพฤหัสบดี: 11:30 to 14:30, 17:00 to 22:30 | วันศุกร์: 11:30 to 14:30, 17:00 to 22:30 | วันเสาร์: 11:30 to 14:30, 17:00 to 22:30 | วันอาทิตย์: 11:30 to 14:30, 17:00 to 22:30 | วันจันทร์: 11:30 to 14:30, 17:00 to 22:30 | วันอังคาร: 11:30 to 14:30, 17:00 to 22:30", "phone": "+66 83 889 4304", "url": "https://www.google.com/maps/search/?api=1&query=%E0%B8%AD%E0%B8%B4%E0%B8%A9%E0%B8%A2%E0%B8%B2%20%E0%B8%AA%E0%B8%A2%E0%B8%B2%E0%B8%A1%E0%B8%A1%E0%B8%B4%E0%B8%AA%20%E0%B8%84%E0%B8%A5%E0%B8%B1%E0%B8%9A&query_place_id=ChIJCXkLZD2f4jARoh-HS34vstk"}, {"name": "SIAM THAI & SEAFOOD", "area": "Siam", "source": "Google Maps", "rating": 4.6, "review_count": 408, "price": "฿300-600", "food_type": "ภัตตาคารอาหารไทย", "address": "275/1-2 ถ. ราชปรารภ แขวงมักกะสัน เขตราชเทวี กรุงเทพมหานคร 10400 ไทย", "opening_hours": "วันพุธ: 10:30 to 22:30 | วันพฤหัสบดี: 10:30 to 22:30 | วันศุกร์: 10:30 to 22:30 | วันเสาร์: 10:30 to 22:30 | วันอาทิตย์: 10:30 to 22:30 | วันจันทร์: 10:30 to 22:30 | วันอังคาร: 10:30 to 22:30", "phone": "+66 81 494 6808", "url": "https://www.google.com/maps/search/?api=1&query=SIAM%20THAI%20%26%20SEAFOOD&query_place_id=ChIJJ1T6SQCf4jARG8eJz-i8Oug"}, {"name": "Siam Tea Room", "area": "Siam", "source": "Google Maps", "rating": 4.6, "review_count": 541, "price": "฿600-1000", "food_type": "ร้านอาหาร", "address": "199 ซ. สุขุมวิท 22 แขวงคลองตัน เขตคลองเตย กรุงเทพมหานคร 10110 ไทย", "opening_hours": "วันพุธ: 8:00 to 23:00 | วันพฤหัสบดี: 8:00 to 23:00 | วันศุกร์: 8:00 to 23:00 | วันเสาร์: 8:00 to 23:00 | วันอาทิตย์: 8:00 to 23:00 | วันจันทร์: 8:00 to 23:00 | วันอังคาร: 8:00 to 23:00", "phone": "+66 2 059 5999", "url": "https://www.google.com/maps/search/?api=1&query=Siam%20Tea%20Room&query_place_id=ChIJDf7QWt2e4jARJklxQGKyUgM"}, {"name": "Siam Cuisine สยาม คุซีน", "area": "Siam", "source": "Google Maps", "rating": 4.6, "review_count": 181, "price": "฿300-600", "food_type": "ภัตตาคารอาหารไทย", "address": "115 1 ถ. สุรวงศ์ แขวงสุริยวงศ์ เขตบางรัก กรุงเทพมหานคร 10500 ไทย", "opening_hours": "วันพุธ: 8:00 to 22:00 | วันพฤหัสบดี: 8:00 to 22:00 | วันศุกร์: 8:00 to 22:00 | วันเสาร์: 8:00 to 22:00 | วันอาทิตย์: 8:00 to 22:00 | วันจันทร์: 8:00 to 22:00 | วันอังคาร: 8:00 to 22:00", "phone": "+66 94 656 4548", "url": "https://www.google.com/maps/search/?api=1&query=Siam%20Cuisine%20%E0%B8%AA%E0%B8%A2%E0%B8%B2%E0%B8%A1%20%E0%B8%84%E0%B8%B8%E0%B8%8B%E0%B8%B5%E0%B8%99&query_place_id=ChIJf810Wiuf4jARUwSp5A0t9zI"}, {"name": "SIAM ORIGINS", "area": "Siam", "source": "Google Maps", "rating": 4.7, "review_count": 570, "price": "฿300-600", "food_type": "ภัตตาคารอาหารไทย", "address": "Museum Siam 4 ถนน สนามไชย แขวงพระบรมมหาราชวัง เขตพระนคร กรุงเทพมหานคร 10200 ไทย", "opening_hours": "วันพุธ: 9:00 to 19:00 | วันพฤหัสบดี: 9:00 to 19:00 | วันศุกร์: 9:00 to 19:00 | วันเสาร์: 9:00 to 19:00 | วันอาทิตย์: 9:00 to 19:00 | วันจันทร์: 9:00 to 17:00 | วันอังคาร: 9:00 to 19:00", "phone": "+66 65 939 7336", "url": "https://www.google.com/maps/search/?api=1&query=SIAM%20ORIGINS&query_place_id=ChIJO8TqvWyZ4jARJ3_ZAlMWJbY"}, {"name": "Miss Siam Restaurant (ห้องอาหารมิสสยาม)", "area": "Siam", "source": "Google Maps", "rating": 4.7, "review_count": 49, "price": "฿1000+", "food_type": "ร้านอาหาร", "address": "400 ถ. พญาไท แขวงวังใหม่ เขตปทุมวัน กรุงเทพมหานคร 10300 ไทย", "opening_hours": "วันพุธ: 11:30 to 21:30 | วันพฤหัสบดี: 11:30 to 21:30 | วันศุกร์: 11:30 to 21:30 | วันเสาร์: 11:30 to 21:30 | วันอาทิตย์: 11:30 to 21:30 | วันจันทร์: 11:30 to 21:30 | วันอังคาร: 11:30 to 21:30", "phone": "+66 2 217 0721", "url": "https://www.google.com/maps/search/?api=1&query=Miss%20Siam%20Restaurant%20(%E0%B8%AB%E0%B9%89%E0%B8%AD%E0%B8%87%E0%B8%AD%E0%B8%B2%E0%B8%AB%E0%B8%B2%E0%B8%A3%E0%B8%A1%E0%B8%B4%E0%B8%AA%E0%B8%AA%E0%B8%A2%E0%B8%B2%E0%B8%A1)&query_place_id=ChIJ3-VagW6f4jARTZSahLdTbfM"}, {"name": "The Siam Tea Room (Asiatique the Riverfront Branch)", "area": "Siam", "source": "Google Maps", "rating": 4.2, "review_count": 255, "price": "฿1000+", "food_type": "ร้านอาหาร", "address": "2194 ถ. เจริญกรุง แขวงวัดพระยาไกร เขตบางคอแหลม กรุงเทพมหานคร 10120 ไทย", "opening_hours": "วันพุธ: 12:00 to 0:00 | วันพฤหัสบดี: 12:00 to 0:00 | วันศุกร์: 12:00 to 0:00 | วันเสาร์: 12:00 to 0:00 | วันอาทิตย์: 12:00 to 0:00 | วันจันทร์: 12:00 to 0:00 | วันอังคาร: 12:00 to 0:00", "phone": "+66 2 059 5999", "url": "https://www.google.com/maps/search/?api=1&query=The%20Siam%20Tea%20Room%20(Asiatique%20the%20Riverfront%20Branch)&query_place_id=ChIJ_TP6rQSZ4jARFR0zt54uFoY"}, {"name": "Jasmine Siam Kitchen จัสมิน สยาม คิทเช่น", "area": "Siam", "source": "Google Maps", "rating": 4.7, "review_count": 1151, "price": "฿300-600", "food_type": "ภัตตาคารอาหารไทย", "address": "497, 14-15 ถ. เพชรบุรี แขวงทุ่งพญาไท เขตราชเทวี กรุงเทพมหานคร 10400 ไทย", "opening_hours": "วันพุธ: 11:50 to 0:00 | วันพฤหัสบดี: 11:50 to 0:00 | วันศุกร์: 11:50 to 0:00 | วันเสาร์: 11:50 to 0:00 | วันอาทิตย์: ปิดทำการ | วันจันทร์: 11:50 to 0:00 | วันอังคาร: 11:50 to 0:00", "phone": "+66 94 874 8773", "url": "https://www.google.com/maps/search/?api=1&query=Jasmine%20Siam%20Kitchen%20%E0%B8%88%E0%B8%B1%E0%B8%AA%E0%B8%A1%E0%B8%B4%E0%B8%99%20%E0%B8%AA%E0%B8%A2%E0%B8%B2%E0%B8%A1%20%E0%B8%84%E0%B8%B4%E0%B8%97%E0%B9%80%E0%B8%8A%E0%B9%88%E0%B8%99&query_place_id=ChIJ1RRK2NSf4jARfIAToxgsxrU"}, {"name": "Siam Yacht Club", "area": "Siam", "source": "Google Maps", "rating": 4.7, "review_count": 570, "price": "฿600-1000", "food_type": "ภัตตาคารอาหารทะเล", "address": "2 ถ. เจริญกรุง แขวงสี่พระยา เขตบางรัก กรุงเทพมหานคร 10500 ไทย", "opening_hours": "วันพุธ: 17:00 to 1:00 | วันพฤหัสบดี: 17:00 to 1:00 | วันศุกร์: 17:00 to 1:00 | วันเสาร์: 17:00 to 1:00 | วันอาทิตย์: 17:00 to 1:00 | วันจันทร์: 17:00 to 1:00 | วันอังคาร: 17:00 to 1:00", "phone": "+66 2 266 0123", "url": "https://www.google.com/maps/search/?api=1&query=Siam%20Yacht%20Club&query_place_id=ChIJa_QR2BmZ4jARsm5cD7Q1ehk"}, {"name": "Luxury Siam Restaurant", "area": "Siam", "source": "Google Maps", "rating": 4.9, "review_count": 54, "price": "฿100-300", "food_type": "ร้านอาหาร", "address": "500 ถ. ร่มเกล้า แขวงแสนแสบ เขตมีนบุรี กรุงเทพมหานคร 10510 ไทย", "opening_hours": "วันพุธ: 9:00 to 23:00 | วันพฤหัสบดี: 9:00 to 23:00 | วันศุกร์: 9:00 to 23:00 | วันเสาร์: 9:00 to 23:00 | วันอาทิตย์: 9:00 to 23:00 | วันจันทร์: 9:00 to 23:00 | วันอังคาร: 9:00 to 23:00", "phone": "+66 64 984 5260", "url": "https://www.google.com/maps/search/?api=1&query=Luxury%20Siam%20Restaurant&query_place_id=ChIJvQPJJ8RlHTERJdfe4bhDhDE"}, {"name": "Siam Piman Hotel", "area": "Siam", "source": "Google Maps", "rating": 4.0, "review_count": 222, "price": "฿1000+", "food_type": "โรงแรม", "address": "8 รามคําแหง 170 แขวงมีนบุรี เขตมีนบุรี กรุงเทพมหานคร 10510 ไทย", "opening_hours": "N/A", "phone": "+66 2 917 5212", "url": "https://www.google.com/maps/search/?api=1&query=Siam%20Piman%20Hotel&query_place_id=ChIJn3Po3q5eHTERQMjwDxX_Cw0"}, {"name": "Shabu Siam ชาบูสยาม", "area": "Siam", "source": "Google Maps", "rating": 4.2, "review_count": 57, "price": "฿100-300", "food_type": "ร้านอาหาร", "address": "98 ถ. ร่มเกล้า แขวงคลองสามประเวศ เขตลาดกระบัง กรุงเทพมหานคร 10520 ไทย", "opening_hours": "วันพุธ: 11:30 to 21:00 | วันพฤหัสบดี: 11:30 to 21:00 | วันศุกร์: 11:30 to 21:00 | วันเสาร์: 11:30 to 21:00 | วันอาทิตย์: 11:30 to 21:00 | วันจันทร์: 11:30 to 21:00 | วันอังคาร: 11:30 to 21:00", "phone": "+66 2 543 9255", "url": "https://www.google.com/maps/search/?api=1&query=Shabu%20Siam%20%E0%B8%8A%E0%B8%B2%E0%B8%9A%E0%B8%B9%E0%B8%AA%E0%B8%A2%E0%B8%B2%E0%B8%A1&query_place_id=ChIJPWmh-YJmHTER-7qO3hoy9ds"}, {"name": "ขนมจีนสยาม", "area": "Siam", "source": "Google Maps", "rating": 5.0, "review_count": 6, "price": "N/A", "food_type": "ร้านอาหาร", "address": "91 251 ถนน รามคำแหง 190 แขวงมีนบุรี เขตมีนบุรี กรุงเทพมหานคร 10510 ไทย", "opening_hours": "วันพุธ: 9:00 to 18:00 | วันพฤหัสบดี: 9:00 to 18:00 | วันศุกร์: 9:00 to 18:00 | วันเสาร์: 9:00 to 18:00 | วันอาทิตย์: 9:00 to 18:00 | วันจันทร์: 9:00 to 18:00 | วันอังคาร: 9:00 to 18:00", "phone": "+66 86 998 9811", "url": "https://www.google.com/maps/search/?api=1&query=%E0%B8%82%E0%B8%99%E0%B8%A1%E0%B8%88%E0%B8%B5%E0%B8%99%E0%B8%AA%E0%B8%A2%E0%B8%B2%E0%B8%A1&query_place_id=ChIJ3VFcOm9kHTERY_vzZ-MPzEA"}, {"name": "สยามกะเพราคาเฟ่", "area": "Siam", "source": "Google Maps", "rating": 4.6, "review_count": 92, "price": "฿300-600", "food_type": "ร้านอาหาร", "address": "23 ซ. เสรีไทย 73 แขวงคันนายาว เขตคันนายาว กรุงเทพมหานคร 10230 ไทย", "opening_hours": "วันพุธ: 9:59 to 19:59 | วันพฤหัสบดี: 9:59 to 19:59 | วันศุกร์: 9:59 to 19:59 | วันเสาร์: 9:59 to 19:59 | วันอาทิตย์: 9:59 to 19:59 | วันจันทร์: 9:59 to 19:59 | วันอังคาร: 9:59 to 19:59", "phone": "+66 97 141 5656", "url": "https://www.google.com/maps/search/?api=1&query=%E0%B8%AA%E0%B8%A2%E0%B8%B2%E0%B8%A1%E0%B8%81%E0%B8%B0%E0%B9%80%E0%B8%9E%E0%B8%A3%E0%B8%B2%E0%B8%84%E0%B8%B2%E0%B9%80%E0%B8%9F%E0%B9%88&query_place_id=ChIJg2YtUIFjHTERsJ7u9li6q6A"}, {"name": "รสสยาม นู้ดเดิ้ล สาขารสสยามเฮ้าส์", "area": "Siam", "source": "Google Maps", "rating": 4.2, "review_count": 115, "price": "฿100-300", "food_type": "ร้านก๋วยเตี๋ยว", "address": "112 32 ถ. ราษฎร์พัฒนา แขวงราษฎร์พัฒนา สะพานสูง กรุงเทพมหานคร 10240 ไทย", "opening_hours": "วันพุธ: 8:30 to 20:30 | วันพฤหัสบดี: 8:30 to 20:30 | วันศุกร์: 8:30 to 20:30 | วันเสาร์: 7:00 to 20:00 | วันอาทิตย์: 7:00 to 20:00 | วันจันทร์: 8:30 to 20:30 | วันอังคาร: 8:30 to 20:30", "phone": "+66 91 839 5555", "url": "https://www.google.com/maps/search/?api=1&query=%E0%B8%A3%E0%B8%AA%E0%B8%AA%E0%B8%A2%E0%B8%B2%E0%B8%A1%20%E0%B8%99%E0%B8%B9%E0%B9%89%E0%B8%94%E0%B9%80%E0%B8%94%E0%B8%B4%E0%B9%89%E0%B8%A5%20%E0%B8%AA%E0%B8%B2%E0%B8%82%E0%B8%B2%E0%B8%A3%E0%B8%AA%E0%B8%AA%E0%B8%A2%E0%B8%B2%E0%B8%A1%E0%B9%80%E0%B8%AE%E0%B9%89%E0%B8%B2%E0%B8%AA%E0%B9%8C&query_place_id=ChIJaZDbHuZhHTERvMXwJ7Ww1Y4"}, {"name": "สยามDEGREE", "area": "Siam", "source": "Google Maps", "rating": 4.5, "review_count": 119, "price": "฿600-1000", "food_type": "ร้านอาหาร", "address": "220 ซอย สวนสยาม 18 แขวงคันนายาว เขตคันนายาว กรุงเทพมหานคร 10230 ไทย", "opening_hours": "วันพุธ: 17:00 to 2:00 | วันพฤหัสบดี: 17:00 to 2:00 | วันศุกร์: 17:00 to 2:00 | วันเสาร์: 17:00 to 2:00 | วันอาทิตย์: 17:00 to 2:00 | วันจันทร์: 17:00 to 2:00 | วันอังคาร: 17:00 to 2:00", "phone": "N/A", "url": "https://www.google.com/maps/search/?api=1&query=%E0%B8%AA%E0%B8%A2%E0%B8%B2%E0%B8%A1DEGREE&query_place_id=ChIJregx8MdjHTERcxd1lCvXwrI"}, {"name": "SIAM ZAB", "area": "Siam", "source": "Google Maps", "rating": 5.0, "review_count": 1, "price": "N/A", "food_type": "ร้านอาหาร", "address": "49 3 แขวงสามวาตะวันตก เขตคลองสามวา กรุงเทพมหานคร 10510 ไทย", "opening_hours": "วันพุธ: ปิดทำการ | วันพฤหัสบดี: 15:00 to 0:00 | วันศุกร์: 15:00 to 0:00 | วันเสาร์: 15:00 to 0:00 | วันอาทิตย์: 15:00 to 0:00 | วันจันทร์: 15:00 to 0:00 | วันอังคาร: 15:00 to 0:00", "phone": "+66 64 912 5999", "url": "https://www.google.com/maps/search/?api=1&query=SIAM%20ZAB&query_place_id=ChIJ-7xZ1PN7HTERp3dUGqTm4pA"}, {"name": "โจ๊กสยาม สาขาเคหะฯร่มเกล้า", "area": "Siam", "source": "Google Maps", "rating": 3.7, "review_count": 24, "price": "฿100-300", "food_type": "ร้านอาหาร", "address": "169/3-4 เคหะร่มเกล้า 31 แขวงคลองสองต้นนุ่น เขตลาดกระบัง กรุงเทพมหานคร 10520 ไทย", "opening_hours": "วันพุธ: เปิด 24 ชั่วโมง | วันพฤหัสบดี: เปิด 24 ชั่วโมง | วันศุกร์: เปิด 24 ชั่วโมง | วันเสาร์: เปิด 24 ชั่วโมง | วันอาทิตย์: เปิด 24 ชั่วโมง | วันจันทร์: เปิด 24 ชั่วโมง | วันอังคาร: เปิด 24 ชั่วโมง", "phone": "+66 64 830 9339", "url": "https://www.google.com/maps/search/?api=1&query=%E0%B9%82%E0%B8%88%E0%B9%8A%E0%B8%81%E0%B8%AA%E0%B8%A2%E0%B8%B2%E0%B8%A1%20%E0%B8%AA%E0%B8%B2%E0%B8%82%E0%B8%B2%E0%B9%80%E0%B8%84%E0%B8%AB%E0%B8%B0%E0%B8%AF%E0%B8%A3%E0%B9%88%E0%B8%A1%E0%B9%80%E0%B8%81%E0%B8%A5%E0%B9%89%E0%B8%B2&query_place_id=ChIJsQ6vAgBnHTERF6u0akIIKms"}, {"name": "ร้านจิ้มจุ่มสยามเบญจมาศ 8", "area": "Siam", "source": "Google Maps", "rating": 4.2, "review_count": 135, "price": "฿100-300", "food_type": "ร้านอาหาร", "address": "เลขที่17 ถ. กาญจนาภิเษก ทับช้าง สะพานสูง กรุงเทพมหานคร 10240 ไทย", "opening_hours": "วันพุธ: 14:00 to 0:00 | วันพฤหัสบดี: 14:00 to 0:00 | วันศุกร์: 14:00 to 0:00 | วันเสาร์: 14:00 to 0:00 | วันอาทิตย์: 14:00 to 0:00 | วันจันทร์: 14:00 to 0:00 | วันอังคาร: 14:00 to 0:00", "phone": "+66 94 515 5942", "url": "https://www.google.com/maps/search/?api=1&query=%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%88%E0%B8%B4%E0%B9%89%E0%B8%A1%E0%B8%88%E0%B8%B8%E0%B9%88%E0%B8%A1%E0%B8%AA%E0%B8%A2%E0%B8%B2%E0%B8%A1%E0%B9%80%E0%B8%9A%E0%B8%8D%E0%B8%88%E0%B8%A1%E0%B8%B2%E0%B8%A8%208&query_place_id=ChIJvYa4VEhjHTERfzzl9GDifZU"}, {"name": "ปลาร้าสยาม", "area": "Siam", "source": "Google Maps", "rating": 4.9, "review_count": 84, "price": "฿300-600", "food_type": "ร้านอาหาร", "address": "100 ถ. สุขาภิบาล 2 แขวงประเวศ เขตประเวศ กรุงเทพมหานคร 10250 ไทย", "opening_hours": "วันพุธ: 17:00 to 21:00 | วันพฤหัสบดี: 17:00 to 21:00 | วันศุกร์: 17:00 to 21:00 | วันเสาร์: 17:00 to 21:00 | วันอาทิตย์: 17:00 to 21:00 | วันจันทร์: 17:00 to 21:00 | วันอังคาร: 17:00 to 21:00", "phone": "+66 61 761 0042", "url": "https://www.google.com/maps/search/?api=1&query=%E0%B8%9B%E0%B8%A5%E0%B8%B2%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%AA%E0%B8%A2%E0%B8%B2%E0%B8%A1&query_place_id=ChIJWVnLJCZhHTERN2eN4JlrFWU"}, {"name": "บริษัท สยาม บางนา แลนด์ จำกัด", "area": "Siam", "source": "Google Maps", "rating": 4.0, "review_count": 13, "price": "N/A", "food_type": "ภัตตาคารอาหารแปซิฟิกตะวันตกเฉียงเหนือ (US)", "address": "หมู่ที่ 7 69 ตำบล ศีรษะจรเข้น้อย อำเภอบางเสาธง สมุทรปราการ 10570 ไทย", "opening_hours": "N/A", "phone": "+66 2 738 0131", "url": "https://www.google.com/maps/search/?api=1&query=%E0%B8%9A%E0%B8%A3%E0%B8%B4%E0%B8%A9%E0%B8%B1%E0%B8%97%20%E0%B8%AA%E0%B8%A2%E0%B8%B2%E0%B8%A1%20%E0%B8%9A%E0%B8%B2%E0%B8%87%E0%B8%99%E0%B8%B2%20%E0%B9%81%E0%B8%A5%E0%B8%99%E0%B8%94%E0%B9%8C%20%E0%B8%88%E0%B8%B3%E0%B8%81%E0%B8%B1%E0%B8%94&query_place_id=ChIJzXLveWVDHTERgKo-rMJ8nT4"}, {"name": "ครัวข้าวแกงสยาม", "area": "Siam", "source": "Google Maps", "rating": 3.8, "review_count": 163, "price": "฿100-300", "food_type": "ร้านอาหาร", "address": "221/1 ถ. สวนสยาม แขวงคันนายาว เขตคันนายาว กรุงเทพมหานคร 10230 ไทย", "opening_hours": "วันพุธ: 6:30 to 14:30 | วันพฤหัสบดี: 6:30 to 14:30 | วันศุกร์: 6:30 to 14:30 | วันเสาร์: 6:30 to 14:30 | วันอาทิตย์: 6:30 to 14:30 | วันจันทร์: 6:30 to 14:30 | วันอังคาร: 6:30 to 14:30", "phone": "+66 94 325 9191", "url": "https://www.google.com/maps/search/?api=1&query=%E0%B8%84%E0%B8%A3%E0%B8%B1%E0%B8%A7%E0%B8%82%E0%B9%89%E0%B8%B2%E0%B8%A7%E0%B9%81%E0%B8%81%E0%B8%87%E0%B8%AA%E0%B8%A2%E0%B8%B2%E0%B8%A1&query_place_id=ChIJHwEFTJRjHTER0yeLK-KmWvY"}, {"name": "Siam Thai food Restaurant", "area": "Siam", "source": "Google Maps", "rating": 5.0, "review_count": 2, "price": "N/A", "food_type": "ร้านอาหาร", "address": "Vasan mansion, ซอย อ่อนนุช 14 แขวงอ่อนนุช เขตสวนหลวง กรุงเทพมหานคร 10250 ไทย", "opening_hours": "วันพุธ: 9:00 to 21:00 | วันพฤหัสบดี: 9:00 to 21:00 | วันศุกร์: 9:00 to 21:00 | วันเสาร์: 9:00 to 21:00 | วันอาทิตย์: 9:00 to 21:00 | วันจันทร์: 9:00 to 21:00 | วันอังคาร: 9:00 to 21:00", "phone": "+66 2 333 1333", "url": "https://www.google.com/maps/search/?api=1&query=Siam%20Thai%20food%20Restaurant&query_place_id=ChIJ7VJpfwCf4jARGd75Ea6J_2c"}, {"name": "Siam Chicken Rice", "area": "Siam", "source": "Google Maps", "rating": 5.0, "review_count": 1, "price": "N/A", "food_type": "ภัตตาคารอาหารประเภทไก่", "address": "แฟชั่นไอซ์แลนด์ 5/5-6 ถ. รามอินทรา แขวงคันนายาว เขตคันนายาว กรุงเทพมหานคร 10220 ไทย", "opening_hours": "วันพุธ: 9:00 to 22:00 | วันพฤหัสบดี: 9:00 to 22:00 | วันศุกร์: 9:00 to 22:00 | วันเสาร์: 9:00 to 22:00 | วันอาทิตย์: 9:00 to 22:00 | วันจันทร์: 9:00 to 22:00 | วันอังคาร: 9:00 to 22:00", "phone": "+66 94 635 9526", "url": "https://www.google.com/maps/search/?api=1&query=Siam%20Chicken%20Rice&query_place_id=ChIJz6VQc5RjHTERuhuSQK5psVw"}, {"name": "โจ๊กสยาม สาขาพัฒนาการ", "area": "Siam", "source": "Google Maps", "rating": 4.2, "review_count": 19, "price": "N/A", "food_type": "ร้านอาหาร", "address": "207 ถ. พัฒนาการ แขวงประเวศ เขตประเวศ กรุงเทพมหานคร 10250 ไทย", "opening_hours": "วันพุธ: เปิด 24 ชั่วโมง | วันพฤหัสบดี: เปิด 24 ชั่วโมง | วันศุกร์: เปิด 24 ชั่วโมง | วันเสาร์: เปิด 24 ชั่วโมง | วันอาทิตย์: เปิด 24 ชั่วโมง | วันจันทร์: เปิด 24 ชั่วโมง | วันอังคาร: เปิด 24 ชั่วโมง", "phone": "+66 83 878 5151", "url": "https://www.google.com/maps/search/?api=1&query=%E0%B9%82%E0%B8%88%E0%B9%8A%E0%B8%81%E0%B8%AA%E0%B8%A2%E0%B8%B2%E0%B8%A1%20%E0%B8%AA%E0%B8%B2%E0%B8%82%E0%B8%B2%E0%B8%9E%E0%B8%B1%E0%B8%92%E0%B8%99%E0%B8%B2%E0%B8%81%E0%B8%B2%E0%B8%A3&query_place_id=ChIJx4EhbQBhHTER4XfcVt7ZflU"}, {"name": "เฮือนร้อยเอ็ด", "area": "Siam", "source": "Google Maps", "rating": 4.3, "review_count": 71, "price": "N/A", "food_type": "ภัตตาคารอาหารไทย", "address": "RM5Q+JWR ซ. สวนสยาม 16 แขวงคันนายาว เขตคันนายาว กรุงเทพมหานคร 10230 ไทย", "opening_hours": "วันพุธ: 10:00 to 21:00 | วันพฤหัสบดี: 10:00 to 21:00 | วันศุกร์: 10:00 to 21:00 | วันเสาร์: 10:00 to 21:00 | วันอาทิตย์: 10:00 to 21:00 | วันจันทร์: 10:00 to 21:00 | วันอังคาร: ปิดทำการ", "phone": "+66 80 591 0140", "url": "https://www.google.com/maps/search/?api=1&query=%E0%B9%80%E0%B8%AE%E0%B8%B7%E0%B8%AD%E0%B8%99%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A2%E0%B9%80%E0%B8%AD%E0%B9%87%E0%B8%94&query_place_id=ChIJH-pukKJjHTERLMF0rzmBcKM"}, {"name": "ร้าน ต้นเครื่อง", "area": "Thonglor", "source": "Tripadvisor", "rating": 4.1, "review_count": 251, "price": "฿600-1000", "food_type": "restaurant", "address": "211/3 Soi Sukhumvit 49, Sukhumvit Rd. Wattana, กรุงเทพมหานคร (กทม.) 10110 ไทย", "opening_hours": "Mon: 11:00-22:30 | Tue: 11:00-22:30 | Wed: 11:00-22:30 | Thu: 11:00-22:30 | Fri: 11:00-22:30 | Sat: 11:00-22:30 | Sun: 11:00-22:30", "phone": "+66 2 391 8703", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d1396816-Reviews-Thon_Krueng_Restaurant-Bangkok.html"}, {"name": "บะหมี่คนแซ่ลี", "area": "Thonglor", "source": "Tripadvisor", "rating": 4.3, "review_count": 87, "price": "฿100-300", "food_type": "restaurant", "address": "57 ถนนสุขุมวิท, กรุงเทพมหานคร (กทม.) 10110 ไทย", "opening_hours": "Mon: 07:00-22:30 | Tue: 07:00-22:30 | Wed: 07:00-22:30 | Thu: 07:00-22:30 | Fri: 07:00-22:30 | Sat: 07:00-22:30 | Sun: 07:00-22:30", "phone": "+66 2 381 8180", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d6503249-Reviews-Bamee_Kon_Sae_Lee-Bangkok.html"}, {"name": "The Old English Bangkok", "area": "Thonglor", "source": "Tripadvisor", "rating": 4.2, "review_count": 108, "price": "฿600-1000", "food_type": "restaurant", "address": "1033 Sukhumvit Soi 53/1,Sukhumvit Road Thong Lo BTS Station, Klongton Nua, Watthana, กรุงเทพมหานคร (กทม.) 10110 ไทย", "opening_hours": "Mon: 08:00-02:00 | Tue: 08:00-02:00 | Wed: 08:00-02:00 | Thu: 08:00-02:00 | Fri: 08:00-02:00 | Sat: 08:00-00:00 | Sun: 08:00-02:00", "phone": "+66 2 392 3361", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d15023570-Reviews-The_Old_English_Bangkok-Bangkok.html"}, {"name": "Tossakan Thai Curry House", "area": "Thonglor", "source": "Tripadvisor", "rating": 4.7, "review_count": 320, "price": "฿600-1000", "food_type": "restaurant", "address": "225 Ram Buttri Road, กรุงเทพมหานคร (กทม.) 10200 ไทย", "opening_hours": "Mon: 11:30-16:00,17:00-22:30 | Tue: 11:30-16:00,17:00-22:30 | Wed: 11:30-16:00,17:00-22:30 | Thu: 11:30-16:00,17:00-22:30 | Fri: 11:30-16:00,17:00-22:30 | Sat: 11:30-16:00,17:00-22:30 | Sun: 11:30-16:00,17:00-22:30", "phone": "+66 84 096 4605", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d19243978-Reviews-Tossakan_Thai_Curry_House-Bangkok.html"}, {"name": "Supanniga Eating Room, Thonglor", "area": "Thonglor", "source": "Tripadvisor", "rating": 4.3, "review_count": 707, "price": "฿600-1000", "food_type": "restaurant", "address": "160/11 สุขุมวิทซอย 55 Between Thong Lor 6 and 8, กรุงเทพมหานคร (กทม.) 10110 ไทย", "opening_hours": "Mon: 10:00-22:00 | Tue: 10:00-22:00 | Wed: 10:00-22:00 | Thu: 10:00-22:00 | Fri: 10:00-22:00 | Sat: 10:00-22:00 | Sun: 10:00-22:00", "phone": "+66 91 774 9808", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d3738118-Reviews-Supanniga_Eating_Room_Thonglor-Bangkok.html"}, {"name": "Octave Rooftop Lounge & Bar", "area": "Thonglor", "source": "Tripadvisor", "rating": 4.6, "review_count": 3932, "price": "฿600-1000", "food_type": "restaurant", "address": "2 ซอยสุขุมวิท 57 ถนนสุขุมวิท, กรุงเทพมหานคร (กทม.) 10110 ไทย", "opening_hours": "Mon: 17:00-02:00 | Tue: 17:00-02:00 | Wed: 17:00-02:00 | Thu: 17:00-02:00 | Fri: 17:00-02:00 | Sat: 17:00-02:00 | Sun: 17:00-02:00", "phone": "+66 2 797 0000", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d4131283-Reviews-Octave_Rooftop_Lounge_Bar-Bangkok.html"}, {"name": "Roast", "area": "Thonglor", "source": "Tripadvisor", "rating": 4.2, "review_count": 563, "price": "฿600-1000", "food_type": "restaurant", "address": "The COMMONS ยูนิต T1 335 ซ.ทองหล่อ 17, ถ.สุขุมวิท 55 แขวงคลองตันเหนือ, กรุงเทพมหานคร (กทม.) 10110 ไทย", "opening_hours": "Mon: 09:00-22:00 | Tue: 10:00-23:00 | Wed: 10:00-23:00 | Thu: 10:00-23:00 | Fri: 10:00-23:00 | Sat: 09:00-23:00 | Sun: 09:00-23:00", "phone": "+66 2 185 2865", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d3172453-Reviews-Roast-Bangkok.html"}, {"name": "Sit and Wonder", "area": "Thonglor", "source": "Tripadvisor", "rating": 4.5, "review_count": 731, "price": "฿100-300", "food_type": "restaurant", "address": "119 ซอยสุขุมวิท 57 คลองตันเหนือ, กรุงเทพมหานคร (กทม.) 10110 ไทย", "opening_hours": "Mon: 11:00-23:00 | Tue: 11:00-23:00 | Wed: 11:00-23:00 | Thu: 11:00-23:00 | Fri: 11:00-23:00 | Sat: 11:00-23:00 | Sun: 11:00-23:00", "phone": "+66 61 198 9782", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d4306866-Reviews-Sit_and_Wonder-Bangkok.html"}, {"name": "The Gardens of Dinsor Palace", "area": "Thonglor", "source": "Tripadvisor", "rating": 4.4, "review_count": 372, "price": "฿600-1000", "food_type": "restaurant", "address": "Soi Chumbala Sukhumvit Road (between Soi 59 & 61), กรุงเทพมหานคร (กทม.) 10110 ไทย", "opening_hours": "Mon: 09:00-23:00 | Tue: 10:00-23:00 | Wed: 10:00-23:00 | Thu: 10:00-23:00 | Fri: 10:00-23:00 | Sat: 10:00-23:00 | Sun: 09:00-23:00", "phone": "+66 93 124 7730", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d6017658-Reviews-The_Gardens_of_Dinsor_Palace-Bangkok.html"}, {"name": "The Little Prince Cafe - Art Gallery & Homemade Desserts", "area": "Thonglor", "source": "Tripadvisor", "rating": 4.9, "review_count": 59, "price": "฿600-1000", "food_type": "restaurant", "address": "180 Suan Phlu road South Sathorn, Thung Mahamek, กรุงเทพมหานคร (กทม.) 10120 ไทย", "opening_hours": "Mon: 10:00-01:30 | Wed: 10:00-01:30 | Thu: 10:00-01:30 | Fri: 10:00-01:30 | Sat: 10:00-01:30 | Sun: 10:00-01:30", "phone": "+66 89 897 7065", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d28050706-Reviews-The_Little_Prince_Cafe_Art_Gallery_Homemade_Desserts-Bangkok.html"}, {"name": "R-HAAN", "area": "Thonglor", "source": "Tripadvisor", "rating": 4.0, "review_count": 140, "price": "฿600-1000", "food_type": "restaurant", "address": "131 ซอย สุขุมวิท 53 (ไปดี มาดี ) แขวงคลองเตยเหนือ, กรุงเทพมหานคร (กทม.) 10110 ไทย", "opening_hours": "Mon: 18:00-23:00 | Tue: 18:00-23:00 | Wed: 18:00-23:00 | Thu: 18:00-23:00 | Fri: 18:00-23:00 | Sat: 18:00-23:00 | Sun: 18:00-23:00", "phone": "+66 95 141 5524", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d14199978-Reviews-R_HAAN-Bangkok.html"}, {"name": "วัฒนาพานิช ก๋วยเตี๋ยวเนื้อ", "area": "Thonglor", "source": "Tripadvisor", "rating": 4.2, "review_count": 136, "price": "฿100-300", "food_type": "restaurant", "address": "336-338 ซอยเอกมัย 8 ถนนสุขุมวิท แขวงคลองเตยเหนือ, กรุงเทพมหานคร (กทม.) 10110 ไทย", "opening_hours": "Mon: 10:00-19:00 | Tue: 10:00-19:00 | Wed: 10:00-19:00 | Thu: 10:00-19:00 | Fri: 10:00-19:00 | Sat: 10:00-19:00 | Sun: 10:00-19:00", "phone": "+66 2 391 7264", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d8743421-Reviews-Wattana_Panich-Bangkok.html"}, {"name": "Nhong Rim Klong", "area": "Thonglor", "source": "Tripadvisor", "rating": 4.2, "review_count": 67, "price": "฿600-1000", "food_type": "restaurant", "address": "51 Ekkamai 23 Alley, กรุงเทพมหานคร (กทม.) 10110 ไทย", "opening_hours": "Tue: 08:30-15:30 | Wed: 08:30-15:30 | Thu: 08:30-15:30 | Fri: 08:30-15:30 | Sat: 08:30-15:30 | Sun: 08:30-15:30", "phone": "+66 86 044 9478", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d12552678-Reviews-Nhong_Rim_Klong-Bangkok.html"}, {"name": "Gaa", "area": "Thonglor", "source": "Tripadvisor", "rating": 4.0, "review_count": 268, "price": "฿600-1000", "food_type": "restaurant", "address": "46/1 Sukhumvit 53 Klong Tan Nuea, กรุงเทพมหานคร (กทม.) 10110 ไทย", "opening_hours": "Mon: 12:00-15:00,17:30-23:59 | Tue: 17:30-23:59 | Wed: 17:30-23:59 | Thu: 17:30-23:59 | Fri: 17:30-23:59 | Sat: 17:30-23:59 | Sun: 12:00-15:00,17:30-23:59", "phone": "+66 63 987 4747", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d12532225-Reviews-Gaa-Bangkok.html"}, {"name": "After You Dessert", "area": "Thonglor", "source": "Tripadvisor", "rating": 4.4, "review_count": 1029, "price": "฿600-1000", "food_type": "restaurant", "address": "323 3 Thong Lo J Avenue Thonglor, กรุงเทพมหานคร (กทม.) 10110 ไทย", "opening_hours": "Mon: 11:00-23:00 | Tue: 11:00-23:00 | Wed: 11:00-23:00 | Thu: 11:00-23:00 | Fri: 11:00-23:00 | Sat: 11:00-23:00 | Sun: 11:00-23:00", "phone": "+66 2 712 9266", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d1504637-Reviews-After_You_Dessert-Bangkok.html"}, {"name": "Mae Varee Fruit Shop", "area": "Thonglor", "source": "Tripadvisor", "rating": 4.3, "review_count": 329, "price": "฿100-300", "food_type": "restaurant", "address": "Thong Lo 55, กรุงเทพมหานคร (กทม.) ไทย", "opening_hours": "Mon: 06:00-22:00 | Tue: 06:00-22:00 | Wed: 06:00-22:00 | Thu: 06:00-22:00 | Fri: 06:00-22:00 | Sat: 06:00-22:00 | Sun: 06:00-22:00", "phone": "+66 2 392 4804", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d5312539-Reviews-Mae_Varee_Fruit_Shop-Bangkok.html"}, {"name": "เดอะดิสตริคท์กริลล์รูม แอนด์ บาร์", "area": "Thonglor", "source": "Tripadvisor", "rating": 4.8, "review_count": 1435, "price": "฿600-1000", "food_type": "restaurant", "address": "2 Ban Kluai Nuea Alley เเบงคอก แมริออท โฮเต็ล สุขุมวิท, กรุงเทพมหานคร (กทม.) 10110 ไทย", "opening_hours": "Mon: 11:30-14:30,17:00-23:00 | Tue: 17:00-23:00 | Wed: 17:00-23:00 | Thu: 17:00-23:00 | Fri: 17:00-23:00 | Sat: 17:00-23:00 | Sun: 17:00-23:00", "phone": "+66 2 797 0000", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d4092525-Reviews-The_District_Grill_Room_And_Bar-Bangkok.html"}, {"name": "บังคาระ ราเมง สาขา เดอะ แมนเนอร์", "area": "Thonglor", "source": "Tripadvisor", "rating": 4.3, "review_count": 288, "price": "฿600-1000", "food_type": "restaurant", "address": "32/1 สุขุมวิท ซอย 39, กรุงเทพมหานคร (กทม.) 10110 ไทย", "opening_hours": "Mon: 11:00-23:00 | Tue: 11:00-23:00 | Wed: 11:00-23:00 | Thu: 11:00-23:00 | Fri: 11:00-23:00 | Sat: 11:00-23:00 | Sun: 11:00-23:00", "phone": "+66 2 662 5162", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d1148079-Reviews-Bankara_Ramen_The_Manor-Bangkok.html"}, {"name": "Masala Art Bangkok", "area": "Thonglor", "source": "Tripadvisor", "rating": 4.5, "review_count": 495, "price": "฿600-1000", "food_type": "restaurant", "address": "2nd Floor, Eight Thonglor Building, Thonglor Soi - 8 Sukhumvit - 55, Klongton Nua, Wattana, กรุงเทพมหานคร (กทม.) 10110 ไทย", "opening_hours": "Mon: 11:00-23:00 | Tue: 11:00-23:00 | Wed: 11:00-23:00 | Thu: 11:00-23:00 | Fri: 11:00-23:00 | Sat: 11:00-23:00 | Sun: 11:00-23:00", "phone": "+66 2 713 8357", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d1488516-Reviews-Masala_Art_Bangkok-Bangkok.html"}, {"name": "The Oasis - All Day Dining", "area": "Thonglor", "source": "Tripadvisor", "rating": 4.9, "review_count": 661, "price": "฿600-1000", "food_type": "restaurant", "address": "27 ซอยสุขุมวิท 55 (ทองหล่อ) ถนนสุขุมวิท โรงแรมนิกโกกรุงเทพชั้น 6 แขวงคลองตันเหนือเขตวัฒนา, กรุงเทพมหานคร (กทม.) 10110 ไทย", "opening_hours": "Mon: 06:00-10:30 | Tue: 05:30-10:30 | Wed: 05:30-10:30 | Thu: 05:30-10:30 | Fri: 05:30-10:30 | Sat: 05:30-10:30 | Sun: 06:00-10:30,12:00-15:00", "phone": "+66 2 080 2111", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d17386436-Reviews-The_Oasis_All_Day_Dining-Bangkok.html"}, {"name": "สบายใจ", "area": "Thonglor", "source": "Tripadvisor", "rating": 4.3, "review_count": 345, "price": "฿100-300", "food_type": "restaurant", "address": "65/5 ซอยสุขุมวิท 63 แขวงคลองตันเหนือ เขตวัฒนา, กรุงเทพมหานคร (กทม.) 10110 ไทย", "opening_hours": "Mon: 10:00-22:30 | Tue: 10:00-22:30 | Wed: 10:00-22:30 | Thu: 10:00-22:30 | Fri: 10:00-22:30 | Sat: 10:00-22:30 | Sun: 10:00-22:30", "phone": "+66 2 714 2622", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d3355144-Reviews-Sa_Bai_Jai-Bangkok.html"}, {"name": "Hummus Boutique Bangkok", "area": "Thonglor", "source": "Tripadvisor", "rating": 4.5, "review_count": 83, "price": "฿100-300", "food_type": "restaurant", "address": "999 ถนน สุขุมวิท แขวง คลองตันเหนือ, กรุงเทพมหานคร (กทม.) 10110 ไทย", "opening_hours": "Mon: 00:00-23:59 | Tue: 00:00-23:59 | Wed: 00:00-23:59 | Thu: 00:00-23:59 | Fri: 00:00-23:59 | Sat: 00:00-23:59 | Sun: 00:00-23:59", "phone": "+66 92 819 8131", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d14790232-Reviews-Hummus_Boutique_Bangkok-Bangkok.html"}, {"name": "57th Street", "area": "Thonglor", "source": "Tripadvisor", "rating": 4.8, "review_count": 1587, "price": "฿600-1000", "food_type": "restaurant", "address": "2 Sukhumvit Soi 57 Bangkok Marriott Hotel Sukhumvit, กรุงเทพมหานคร (กทม.) 10110 ไทย", "opening_hours": "Mon: 06:00-23:00 | Tue: 06:00-23:00 | Wed: 06:00-23:00 | Thu: 06:00-23:00 | Fri: 06:00-23:00 | Sat: 06:00-23:00 | Sun: 06:00-23:00", "phone": "+66 2 797 0000", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d4135165-Reviews-57th_Street-Bangkok.html"}, {"name": "Bacco - Osteria da Sergio", "area": "Thonglor", "source": "Tripadvisor", "rating": 4.1, "review_count": 395, "price": "฿600-1000", "food_type": "restaurant", "address": "35/1 Sukhumvit Soi 53, กรุงเทพมหานคร (กทม.) 10110 ไทย", "opening_hours": "Mon: 11:00-23:00 | Tue: 11:00-23:00 | Wed: 11:00-23:00 | Thu: 11:00-23:00 | Fri: 11:00-23:00 | Sat: 11:00-23:00 | Sun: 11:00-23:00", "phone": "+66 2 662 4538", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d932995-Reviews-Bacco_Osteria_da_Sergio-Bangkok.html"}, {"name": "คั่วกลิ้ง ผักสด - สาขา ทองหล่อ", "area": "Thonglor", "source": "Tripadvisor", "rating": 4.4, "review_count": 101, "price": "฿600-1000", "food_type": "restaurant", "address": "98/1 ซอย ทองหล่อ 5, ถนน สุขุมวิท 55 แขวงคลองตันเหนือ, กรุงเทพมหานคร (กทม.) 10110 ไทย", "opening_hours": "Mon: 07:00-23:00 | Tue: 07:00-23:00 | Wed: 07:00-23:00 | Thu: 07:00-23:00 | Fri: 07:00-23:00 | Sat: 07:00-23:00 | Sun: 07:00-23:00", "phone": "+66 86 053 7779", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d3703925-Reviews-Khua_Kling_Pak_Sod_Thonglor_Branch-Bangkok.html"}, {"name": "HISHOU - Japanese Restaurant", "area": "Thonglor", "source": "Tripadvisor", "rating": 4.8, "review_count": 154, "price": "฿600-1000", "food_type": "restaurant", "address": "27 ซอยสุขุทวิท55 แขวง คลองตันเหนือ เขต วัฒนา, กรุงเทพมหานคร (กทม.) 10110 ไทย", "opening_hours": "Mon: 06:00-10:30,11:30-14:30,17:30-22:30 | Tue: 06:00-10:30,11:30-14:30,17:30-22:30 | Wed: 06:00-10:30,11:30-14:30,17:30-22:30 | Thu: 06:00-10:30,11:30-14:30,17:30-22:30 | Fri: 06:00-10:30,11:30-14:30,17:30-22:30 | Sat: 06:00-10:30,11:30-14:30,17:30-22:30 | Sun: 06:00-10:30,11:30-14:30,17:30-22:30", "phone": "+66 2 080 2111", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d16882444-Reviews-HISHOU_Japanese_Restaurant-Bangkok.html"}, {"name": "Err Urban Rustic Thai", "area": "Thonglor", "source": "Tripadvisor", "rating": 4.0, "review_count": 350, "price": "฿600-1000", "food_type": "restaurant", "address": "24 Sukhumvit 53 Alley Khlong Tan, Khlong Toei, กรุงเทพมหานคร (กทม.) 10110 ไทย", "opening_hours": "Mon: 11:00-23:00 | Tue: 11:00-23:00 | Wed: 11:00-23:00 | Fri: 11:00-23:00 | Sat: 11:00-23:00 | Sun: 11:00-23:00", "phone": "+66 2 622 2292", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d8772948-Reviews-Err_Urban_Rustic_Thai-Bangkok.html"}, {"name": "The Commons Co., Ltd.", "area": "Thonglor", "source": "Tripadvisor", "rating": 4.3, "review_count": 215, "price": "฿600-1000", "food_type": "restaurant", "address": "335/1 Sukhumvit 55, Klongton-Nue, Wattana The COMMONS, กรุงเทพมหานคร (กทม.) 10110 ไทย", "opening_hours": "N/A", "phone": "+66 89 152 2677", "url": "https://th.tripadvisor.com/Restaurant_Review-g293916-d9986138-Reviews-The_Commons_Co_Ltd-Bangkok.html"}, {"name": "ศรีตราด", "area": "Phrom Phong", "source": "Google Maps", "rating": 4.5, "review_count": 2544, "price": "฿1000+", "food_type": "ภัตตาคารอาหารไทย", "address": "90 ซ. สุขุมวิท 33 แขวงคลองตันเหนือ เขตวัฒนา กรุงเทพมหานคร 10110 ไทย", "opening_hours": "วันพุธ: 11:00 to 22:30 | วันพฤหัสบดี: 11:00 to 22:30 | วันศุกร์: 11:00 to 22:30 | วันเสาร์: 11:00 to 22:30 | วันอาทิตย์: 11:00 to 22:30 | วันจันทร์: 11:00 to 22:30 | วันอังคาร: 11:00 to 22:30", "phone": "+66 2 088 0968", "url": "https://www.google.com/maps/search/?api=1&query=%E0%B8%A8%E0%B8%A3%E0%B8%B5%E0%B8%95%E0%B8%A3%E0%B8%B2%E0%B8%94&query_place_id=ChIJoc-7O_ye4jARa2GblY_w4Bo"}, {"name": "Breakfast Story Phrom Phong", "area": "Phrom Phong", "source": "Google Maps", "rating": 4.6, "review_count": 2431, "price": "฿300-600", "food_type": "ร้านอาหาร", "address": "593 27 ถ. สุขุมวิท แขวงคลองตันเหนือ เขตวัฒนา กรุงเทพมหานคร 10110 ไทย", "opening_hours": "วันพุธ: 7:00 to 23:00 | วันพฤหัสบดี: 7:00 to 23:00 | วันศุกร์: 7:00 to 23:00 | วันเสาร์: 7:00 to 23:00 | วันอาทิตย์: 7:00 to 23:00 | วันจันทร์: 7:00 to 23:00 | วันอังคาร: 7:00 to 23:00", "phone": "+66 2 258 1461", "url": "https://www.google.com/maps/search/?api=1&query=Breakfast%20Story%20Phrom%20Phong&query_place_id=ChIJ641S8P2e4jARFamnzgu_IMo"}, {"name": "โคเบะทนเทกิ พร้อมพงษ์", "area": "Phrom Phong", "source": "Google Maps", "rating": 4.6, "review_count": 1925, "price": "฿300-600", "food_type": "ร้านอาหารตะวันตกสไตล์ญี่ปุ่น", "address": "595, 3-4 ซ. สุขุมวิท 33/1 แขวงคลองตันเหนือ เขตวัฒนา กรุงเทพมหานคร 10110 ไทย", "opening_hours": "วันพุธ: 11:00 to 21:30 | วันพฤหัสบดี: 11:00 to 21:30 | วันศุกร์: 11:00 to 21:30 | วันเสาร์: 11:00 to 21:30 | วันอาทิตย์: 11:00 to 21:30 | วันจันทร์: 11:00 to 21:30 | วันอังคาร: 11:00 to 21:30", "phone": "+66 96 862 1110", "url": "https://www.google.com/maps/search/?api=1&query=%E0%B9%82%E0%B8%84%E0%B9%80%E0%B8%9A%E0%B8%B0%E0%B8%97%E0%B8%99%E0%B9%80%E0%B8%97%E0%B8%81%E0%B8%B4%20%E0%B8%9E%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B8%9E%E0%B8%87%E0%B8%A9%E0%B9%8C&query_place_id=ChIJ71MxUnKf4jAR_nrxq8_tPIM"}, {"name": "Maison Philippe", "area": "Phrom Phong", "source": "Google Maps", "rating": 4.7, "review_count": 132, "price": "฿1000+", "food_type": "ภัตตาคารอาหารฝรั่งเศส", "address": "st Floor, S101, 1, 161 ซ. สุขุมวิท 39 Khlongton-Nue, เขตวัฒนา กรุงเทพมหานคร 10110 ไทย", "opening_hours": "วันพุธ: 10:00 to 22:00 | วันพฤหัสบดี: 10:00 to 22:00 | วันศุกร์: 10:00 to 22:00 | วันเสาร์: 10:00 to 22:00 | วันอาทิตย์: 10:00 to 22:00 | วันจันทร์: ปิดทำการ | วันอังคาร: 10:00 to 22:00", "phone": "+66 2 123 8713", "url": "https://www.google.com/maps/search/?api=1&query=Maison%20Philippe&query_place_id=ChIJrSEtZ-Cf4jAR1BxofIJGDHg"}, {"name": "อรรถรส", "area": "Phrom Phong", "source": "Google Maps", "rating": 4.4, "review_count": 1158, "price": "฿1000+", "food_type": "ภัตตาคารอาหารไทย", "address": "59/3 ซ. สุขุมวิท 39 แขวงคลองตันเหนือ เขตวัฒนา กรุงเทพมหานคร 10110 ไทย", "opening_hours": "วันพุธ: 11:00 to 22:00 | วันพฤหัสบดี: 11:00 to 22:00 | วันศุกร์: 11:00 to 22:00 | วันเสาร์: 11:00 to 22:00 | วันอาทิตย์: 11:00 to 22:00 | วันจันทร์: 11:00 to 22:00 | วันอังคาร: 11:00 to 22:00", "phone": "+66 64 249 4244", "url": "https://www.google.com/maps/search/?api=1&query=%E0%B8%AD%E0%B8%A3%E0%B8%A3%E0%B8%96%E0%B8%A3%E0%B8%AA&query_place_id=ChIJ6b0f3_6e4jAR2YzyQaSGBqA"}, {"name": "Roast EmQuartier", "area": "Phrom Phong", "source": "Google Maps", "rating": 4.5, "review_count": 2163, "price": "฿300-600", "food_type": "ร้านอาหาร", "address": "693 ชั้น1 ตึกเฮลิกส์ เอ ถ. สุขุมวิท แขวงคลองตันเหนือ เขตวัฒนา กรุงเทพมหานคร 10110 ไทย", "opening_hours": "วันพุธ: 10:00 to 22:00 | วันพฤหัสบดี: 10:00 to 22:00 | วันศุกร์: 10:00 to 22:00 | วันเสาร์: 10:00 to 22:00 | วันอาทิตย์: 10:00 to 22:00 | วันจันทร์: 10:00 to 22:00 | วันอังคาร: 10:00 to 22:00", "phone": "+66 95 454 6978", "url": "https://www.google.com/maps/search/?api=1&query=Roast%20EmQuartier&query_place_id=ChIJbeWM8wGf4jAR7FjVuQoT7po"}, {"name": "Tempura NAGAOKA phromphong", "area": "Phrom Phong", "source": "Google Maps", "rating": 4.7, "review_count": 136, "price": "฿600-1000", "food_type": "ร้านอาหารเทมปุระ", "address": "111 ซ. สุขุมวิท 39 แขวงคลองตันเหนือ เขตวัฒนา กรุงเทพมหานคร 10110 ไทย", "opening_hours": "วันพุธ: 11:30 to 14:00, 17:00 to 22:30 | วันพฤหัสบดี: 11:30 to 14:00, 17:00 to 22:30 | วันศุกร์: 11:30 to 14:00, 17:00 to 22:30 | วันเสาร์: 11:30 to 14:00, 17:00 to 22:30 | วันอาทิตย์: 11:30 to 14:00, 17:00 to 22:30 | วันจันทร์: 11:30 to 14:00, 17:00 to 22:30 | วันอังคาร: 11:30 to 14:00, 17:00 to 22:30", "phone": "+66 64 064 8228", "url": "https://www.google.com/maps/search/?api=1&query=Tempura%20NAGAOKA%20phromphong&query_place_id=ChIJ_5h1UQCf4jARx3Xc07KdyAE"}, {"name": "เพ็พพิน่า", "area": "Phrom Phong", "source": "Google Maps", "rating": 4.5, "review_count": 2489, "price": "฿1000+", "food_type": "ร้านอาหารอิตาเลียน", "address": "27/1 ซ. สุขุมวิท 33 แขวงคลองเตยเหนือ เขตวัฒนา กรุงเทพมหานคร 10110 ไทย", "opening_hours": "วันพุธ: 11:30 to 15:00, 17:00 to 23:00 | วันพฤหัสบดี: 11:30 to 15:00, 17:00 to 23:00 | วันศุกร์: 11:30 to 15:00, 17:00 to 23:00 | วันเสาร์: 11:00 to 23:00 | วันอาทิตย์: 11:00 to 23:00 | วันจันทร์: 11:30 to 15:00, 17:00 to 23:00 | วันอังคาร: 11:30 to 15:00, 17:00 to 23:00", "phone": "+66 2 119 7677", "url": "https://www.google.com/maps/search/?api=1&query=%E0%B9%80%E0%B8%9E%E0%B9%87%E0%B8%9E%E0%B8%9E%E0%B8%B4%E0%B8%99%E0%B9%88%E0%B8%B2&query_place_id=ChIJQ0cFbPye4jARKjjpGD8_chs"}, {"name": "KURATHAI SHOKUDO", "area": "Phrom Phong", "source": "Google Maps", "rating": 4.8, "review_count": 2026, "price": "฿300-600", "food_type": "ภัตตาคารอาหารบุฟเฟต์", "address": "15 M Tower ซ. สุขุมวิท 35 แขวงคลองตันเหนือ เขตวัฒนา กรุงเทพมหานคร 10110 ไทย", "opening_hours": "วันพุธ: 11:00 to 20:00 | วันพฤหัสบดี: 11:00 to 20:00 | วันศุกร์: 11:00 to 20:30 | วันเสาร์: 11:00 to 20:30 | วันอาทิตย์: 11:00 to 20:30 | วันจันทร์: 11:00 to 20:00 | วันอังคาร: 11:00 to 20:00", "phone": "+66 95 552 2188", "url": "https://www.google.com/maps/search/?api=1&query=KURATHAI%20SHOKUDO&query_place_id=ChIJBTylA_6e4jAR0Mo6lqXgp-0"}, {"name": "Ryoku Cafe", "area": "Phrom Phong", "source": "Google Maps", "rating": 4.7, "review_count": 2573, "price": "฿300-600", "food_type": "ร้านอาหาร", "address": "28 ซ. สุขุมวิท 35 แขวงคลองตันเหนือ เขตวัฒนา กรุงเทพมหานคร 10110 ไทย", "opening_hours": "วันพุธ: 8:00 to 20:00 | วันพฤหัสบดี: 8:00 to 20:00 | วันศุกร์: 8:00 to 20:00 | วันเสาร์: 8:00 to 20:00 | วันอาทิตย์: 8:00 to 20:00 | วันจันทร์: 8:00 to 20:00 | วันอังคาร: 8:00 to 20:00", "phone": "+66 92 772 6000", "url": "https://www.google.com/maps/search/?api=1&query=Ryoku%20Cafe&query_place_id=ChIJa99RCDmd4jARv5vENrAty2s"}, {"name": "Simple. Natural Kitchen", "area": "Phrom Phong", "source": "Google Maps", "rating": 4.5, "review_count": 355, "price": "฿300-600", "food_type": "ภัตตาคารออร์แกนิค", "address": "31 ซอย สวัสดี แขวงพระโขนงเหนือ เขตวัฒนา กรุงเทพมหานคร 10110 ไทย", "opening_hours": "วันพุธ: 9:00 to 17:00 | วันพฤหัสบดี: 9:00 to 17:00 | วันศุกร์: 9:00 to 18:00 | วันเสาร์: 8:00 to 18:00 | วันอาทิตย์: 8:00 to 18:00 | วันจันทร์: ปิดทำการ | วันอังคาร: 9:00 to 17:00", "phone": "+66 2 662 2510", "url": "https://www.google.com/maps/search/?api=1&query=Simple.%20Natural%20Kitchen&query_place_id=ChIJf3UTNvqe4jARbcyXIWXOcys"}, {"name": "MASA GARDEN by SUKI MASA", "area": "Phrom Phong", "source": "Google Maps", "rating": 4.6, "review_count": 442, "price": "฿1000+", "food_type": "ภัตตาคารอาหารญี่ปุ่น", "address": "120 ซอย พรหมจิต แขวงคลองตันเหนือ เขตวัฒนา กรุงเทพมหานคร 10110 ไทย", "opening_hours": "วันพุธ: 11:00 to 22:00 | วันพฤหัสบดี: 11:00 to 22:00 | วันศุกร์: 11:00 to 22:00 | วันเสาร์: 11:00 to 22:00 | วันอาทิตย์: 11:00 to 22:00 | วันจันทร์: 11:00 to 22:00 | วันอังคาร: 11:00 to 22:00", "phone": "+66 91 438 9999", "url": "https://www.google.com/maps/search/?api=1&query=MASA%20GARDEN%20by%20SUKI%20MASA&query_place_id=ChIJN6fweWWf4jAR-RXiH8_4YWs"}, {"name": "ร้านอรนุช", "area": "Phrom Phong", "source": "Google Maps", "rating": 4.6, "review_count": 940, "price": "฿1000+", "food_type": "ภัตตาคารอาหารไทย", "address": "36/1 ซ. สุขุมวิท 23 คลองเตย เขตวัฒนา กรุงเทพมหานคร 10110 ไทย", "opening_hours": "วันพุธ: 11:30 to 22:00 | วันพฤหัสบดี: 11:30 to 22:00 | วันศุกร์: 11:30 to 22:00 | วันเสาร์: 11:30 to 22:00 | วันอาทิตย์: 11:30 to 22:00 | วันจันทร์: 11:30 to 22:00 | วันอังคาร: 11:30 to 22:00", "phone": "+66 2 125 3715", "url": "https://www.google.com/maps/search/?api=1&query=%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%AD%E0%B8%A3%E0%B8%99%E0%B8%B8%E0%B8%8A&query_place_id=ChIJ0eGdrOaf4jARsbK1ylUw0wU"}, {"name": "Philippe", "area": "Phrom Phong", "source": "Google Maps", "rating": 4.5, "review_count": 507, "price": "฿1000+", "food_type": "ภัตตาคารอาหารฝรั่งเศส", "address": "20, 15-17 ซ. สุขุมวิท 39 แขวงคลองตันเหนือ เขตวัฒนา กรุงเทพมหานคร 10110 ไทย", "opening_hours": "วันพุธ: 11:00 to 14:30, 18:00 to 23:30 | วันพฤหัสบดี: 11:00 to 14:30, 18:00 to 22:30 | วันศุกร์: 11:00 to 14:30, 18:00 to 22:30 | วันเสาร์: 11:00 to 14:30, 18:00 to 22:30 | วันอาทิตย์: 11:00 to 14:30, 18:00 to 22:30 | วันจันทร์: ปิดทำการ | วันอังคาร: 11:00 to 14:30, 18:00 to 22:30", "phone": "+66 2 259 4577", "url": "https://www.google.com/maps/search/?api=1&query=Philippe&query_place_id=ChIJq80duOSe4jARnUemw9rNqYQ"}, {"name": "korasha yakiniku", "area": "Phrom Phong", "source": "Google Maps", "rating": 4.6, "review_count": 134, "price": "฿1000+", "food_type": "ร้านเนื้อย่างสไตล์ญี่ปุ่น", "address": "พร้อมพงษ์ เลขที่555 9 ซอย พร้อมพงษ์ คลองตันเหนือ เขตวัฒนา กรุงเทพมหานคร 10110 ไทย", "opening_hours": "วันพุธ: 12:00 to 15:00, 16:30 to 22:00 | วันพฤหัสบดี: 12:00 to 15:00, 16:30 to 22:00 | วันศุกร์: 12:00 to 15:00, 16:30 to 22:00 | วันเสาร์: 12:00 to 15:00, 16:30 to 22:00 | วันอาทิตย์: 12:00 to 15:00, 16:30 to 22:00 | วันจันทร์: 12:00 to 15:00, 16:30 to 22:00 | วันอังคาร: 12:00 to 15:00, 16:30 to 22:00", "phone": "+66 96 265 5053", "url": "https://www.google.com/maps/search/?api=1&query=korasha%20yakiniku&query_place_id=ChIJe6VZGuif4jARoApDlNYxG3Q"}, {"name": "gogiseki", "area": "Phrom Phong", "source": "Google Maps", "rating": 4.7, "review_count": 717, "price": "฿300-600", "food_type": "ร้านอาหารบาร์บีคิวเกาหลี", "address": "147 ซ. สุขุมวิท 39 แขวงคลองตันเหนือ เขตวัฒนา กรุงเทพมหานคร 10110 ไทย", "opening_hours": "วันพุธ: 11:00 to 22:00 | วันพฤหัสบดี: 11:00 to 22:00 | วันศุกร์: 11:00 to 22:00 | วันเสาร์: 11:00 to 22:00 | วันอาทิตย์: 11:00 to 22:00 | วันจันทร์: 11:00 to 22:00 | วันอังคาร: 11:00 to 22:00", "phone": "+66 83 073 4756", "url": "https://www.google.com/maps/search/?api=1&query=gogiseki&query_place_id=ChIJk5m0TPie4jAR9AqikBr7R3g"}, {"name": "Shinsen.BKK", "area": "Phrom Phong", "source": "Google Maps", "rating": 4.2, "review_count": 1572, "price": "฿600-1000", "food_type": "ภัตตาคารอาหารญี่ปุ่น", "address": "149 Tops Food Hall 1 ซ. สุขุมวิท 39 แขวงคลองตันเหนือ เขตวัฒนา กรุงเทพมหานคร 10110 ไทย", "opening_hours": "วันพุธ: 11:00 to 1:00 | วันพฤหัสบดี: 11:00 to 1:00 | วันศุกร์: 11:00 to 1:00 | วันเสาร์: 11:00 to 1:00 | วันอาทิตย์: 11:00 to 1:00 | วันจันทร์: 11:00 to 1:00 | วันอังคาร: 11:00 to 1:00", "phone": "+66 96 651 2922", "url": "https://www.google.com/maps/search/?api=1&query=Shinsen.BKK&query_place_id=ChIJq0pgJPie4jARvJ1P5hQdcfI"}, {"name": "Ministry of Crab Bangkok", "area": "Phrom Phong", "source": "Google Maps", "rating": 4.6, "review_count": 1022, "price": "฿1000+", "food_type": "ภัตตาคารอาหารทะเล", "address": "15, 1 สุขุมวิท 31 แขวงคลองเตยเหนือ เขตวัฒนา กรุงเทพมหานคร 10110 ไทย", "opening_hours": "วันพุธ: 12:00 to 14:30, 17:00 to 22:30 | วันพฤหัสบดี: 12:00 to 14:30, 17:00 to 22:30 | วันศุกร์: 12:00 to 14:30, 17:00 to 22:30 | วันเสาร์: 12:00 to 14:30, 17:00 to 22:30 | วันอาทิตย์: 12:00 to 14:30, 17:00 to 22:30 | วันจันทร์: 12:00 to 14:30, 17:00 to 22:30 | วันอังคาร: 12:00 to 14:30, 17:00 to 22:30", "phone": "+66 98 598 6554", "url": "https://www.google.com/maps/search/?api=1&query=Ministry%20of%20Crab%20Bangkok&query_place_id=ChIJv0Ki8_if4jARvn1DWVjFZTI"}, {"name": "ฮาโอมา แบงค็อก", "area": "Phrom Phong", "source": "Google Maps", "rating": 4.6, "review_count": 517, "price": "฿1000+", "food_type": "ภัตตาคารอาหารแบบหรูหรา", "address": "231, 3 สุขุมวิท 31 แขวงคลองเตยเหนือ เขตวัฒนา กรุงเทพมหานคร 10110 ไทย", "opening_hours": "วันพุธ: 17:30 to 23:00 | วันพฤหัสบดี: 17:30 to 23:00 | วันศุกร์: 17:30 to 23:00 | วันเสาร์: 12:00 to 14:00, 17:30 to 23:00 | วันอาทิตย์: 12:00 to 14:00, 17:30 to 23:00 | วันจันทร์: ปิดทำการ | วันอังคาร: 17:30 to 23:00", "phone": "+66 2 544 0449", "url": "https://www.google.com/maps/search/?api=1&query=%E0%B8%AE%E0%B8%B2%E0%B9%82%E0%B8%AD%E0%B8%A1%E0%B8%B2%20%E0%B9%81%E0%B8%9A%E0%B8%87%E0%B8%84%E0%B9%87%E0%B8%AD%E0%B8%81&query_place_id=ChIJ8c3kP_qe4jARjg8dTyubyiA"}, {"name": "Victoria by Cocotte @ Emquartier", "area": "Phrom Phong", "source": "Google Maps", "rating": 4.6, "review_count": 1031, "price": "฿600-1000", "food_type": "ร้านอาหาร", "address": "ห้องเลขที่ 8 ชั้น GF, The Waterfall Quatier 637 ถ. สุขุมวิท แขวงคลองตันเหนือ เขตวัฒนา กรุงเทพมหานคร 10110 ไทย", "opening_hours": "วันพุธ: 8:00 to 22:00 | วันพฤหัสบดี: 8:00 to 22:00 | วันศุกร์: 8:00 to 22:00 | วันเสาร์: 8:00 to 22:00 | วันอาทิตย์: 8:00 to 22:00 | วันจันทร์: 8:00 to 22:00 | วันอังคาร: 8:00 to 22:00", "phone": "+66 92 390 8080", "url": "https://www.google.com/maps/search/?api=1&query=Victoria%20by%20Cocotte%20%40%20Emquartier&query_place_id=ChIJAVSRYU2f4jARWx7kH5rhiWc"}, {"name": "Simmer by Praha - Singha Complex", "area": "Phrom Phong", "source": "Google Maps", "rating": 4.9, "review_count": 825, "price": "N/A", "food_type": "ร้านอาหาร", "address": "2nd Fl., Singha Complex, แขวงบางกะปิ เขตห้วยขวาง กรุงเทพมหานคร 10310 ไทย", "opening_hours": "วันพุธ: 11:00 to 21:00 | วันพฤหัสบดี: 11:00 to 21:00 | วันศุกร์: 11:00 to 21:00 | วันเสาร์: 11:00 to 21:00 | วันอาทิตย์: 11:00 to 21:00 | วันจันทร์: 11:00 to 21:00 | วันอังคาร: 11:00 to 21:00", "phone": "+66 64 985 1351", "url": "https://www.google.com/maps/search/?api=1&query=Simmer%20by%20Praha%20-%20Singha%20Complex&query_place_id=ChIJjWmzFpCf4jAR2r8osb_T0Ic"}, {"name": "Lemon Farm Cafe & Meal", "area": "Phrom Phong", "source": "Google Maps", "rating": 4.1, "review_count": 8, "price": "N/A", "food_type": "ร้านอาหาร", "address": "1688 ถ. เพชรบุรี แขวงบางกะปิ เขตห้วยขวาง กรุงเทพมหานคร 10310 ไทย", "opening_hours": "วันพุธ: 7:30 to 20:30 | วันพฤหัสบดี: 7:30 to 20:30 | วันศุกร์: 7:30 to 20:30 | วันเสาร์: 8:00 to 20:30 | วันอาทิตย์: 8:00 to 20:30 | วันจันทร์: 7:30 to 20:30 | วันอังคาร: 7:30 to 20:30", "phone": "N/A", "url": "https://www.google.com/maps/search/?api=1&query=Lemon%20Farm%20Cafe%20%26%20Meal&query_place_id=ChIJPc7qPACf4jARE-QDXURnHhQ"}, {"name": "Fika & Co. Singha Complex", "area": "Phrom Phong", "source": "Google Maps", "rating": 4.8, "review_count": 202, "price": "N/A", "food_type": "ร้านกาแฟ", "address": "Singha Complex 1nd floor, 1788 แขวงบางกะปิ เขตห้วยขวาง กรุงเทพมหานคร 10310 ไทย", "opening_hours": "วันพุธ: 8:30 to 17:30 | วันพฤหัสบดี: 8:30 to 17:30 | วันศุกร์: 8:30 to 17:30 | วันเสาร์: 8:30 to 17:30 | วันอาทิตย์: 8:30 to 17:30 | วันจันทร์: 8:30 to 17:30 | วันอังคาร: 8:30 to 17:30", "phone": "+66 61 868 3628", "url": "https://www.google.com/maps/search/?api=1&query=Fika%20%26%20Co.%20Singha%20Complex&query_place_id=ChIJhQyrwKWf4jAR-19b465sv0U"}, {"name": "Lemon Farm Singha Complex", "area": "Phrom Phong", "source": "Google Maps", "rating": 4.5, "review_count": 13, "price": "N/A", "food_type": "ร้านอาหารสุขภาพ", "address": "Lemon Farm Singha Complex 1788 New, บางกะปิ เขตห้วยขวาง กรุงเทพมหานคร 10310 ไทย", "opening_hours": "วันพุธ: 7:30 to 20:30 | วันพฤหัสบดี: 7:30 to 20:30 | วันศุกร์: 7:30 to 20:30 | วันเสาร์: 9:00 to 20:30 | วันอาทิตย์: 9:00 to 20:30 | วันจันทร์: 7:30 to 19:00 | วันอังคาร: 7:30 to 20:30", "phone": "+66 2 107 0979", "url": "https://www.google.com/maps/search/?api=1&query=Lemon%20Farm%20Singha%20Complex&query_place_id=ChIJRTw1fEOf4jAR_XrweXzFuE8"}, {"name": "HOSHI JAPANESE RESTAURANT (สาขา Singha Complex ชั้น 1)", "area": "Phrom Phong", "source": "Google Maps", "rating": 4.2, "review_count": 189, "price": "N/A", "food_type": "ร้านอาหาร", "address": "1788 ถ. เพชรบุรี บางกะปิ เขตห้วยขวาง กรุงเทพมหานคร 10310 ไทย", "opening_hours": "วันพุธ: 11:00 to 21:00 | วันพฤหัสบดี: 11:00 to 21:00 | วันศุกร์: 11:00 to 21:00 | วันเสาร์: 11:00 to 21:00 | วันอาทิตย์: 11:00 to 21:00 | วันจันทร์: 11:00 to 21:00 | วันอังคาร: 11:00 to 21:00", "phone": "+66 2 163 4398", "url": "https://www.google.com/maps/search/?api=1&query=HOSHI%20JAPANESE%20RESTAURANT%20(%E0%B8%AA%E0%B8%B2%E0%B8%82%E0%B8%B2%20Singha%20Complex%20%E0%B8%8A%E0%B8%B1%E0%B9%89%E0%B8%99%201)&query_place_id=ChIJP4B-VCmf4jARq0ZX3hHKjJM"}, {"name": "SalapaoKoouan", "area": "Phrom Phong", "source": "Google Maps", "rating": 5.0, "review_count": 2, "price": "N/A", "food_type": "ภัตตาคารอาหารติ่มซำ", "address": "Unit no. OP. 302 1788 ถนน เพชรบุรีตัดใหม่ แขวงบางกะปิ เขตห้วยขวาง กรุงเทพมหานคร 10310 ไทย", "opening_hours": "วันพุธ: 7:00 to 18:00 | วันพฤหัสบดี: 7:00 to 18:00 | วันศุกร์: 7:00 to 18:00 | วันเสาร์: 10:00 to 18:00 | วันอาทิตย์: 10:00 to 18:00 | วันจันทร์: 7:00 to 18:00 | วันอังคาร: 7:00 to 18:00", "phone": "+66 86 888 9686", "url": "https://www.google.com/maps/search/?api=1&query=SalapaoKoouan&query_place_id=ChIJhd-ixfGe4jAR4pdKLBv6ND4"}, {"name": "Hokkaido Butadon Tokachi", "area": "Phrom Phong", "source": "Google Maps", "rating": 4.4, "review_count": 80, "price": "N/A", "food_type": "ภัตตาคารอาหารญี่ปุ่น", "address": "1788 New, แขวงบางกะปิ เขตห้วยขวาง กรุงเทพมหานคร 10310 ไทย", "opening_hours": "วันพุธ: 11:00 to 21:00 | วันพฤหัสบดี: 11:00 to 21:00 | วันศุกร์: 11:00 to 21:00 | วันเสาร์: 11:00 to 21:00 | วันอาทิตย์: 11:00 to 21:00 | วันจันทร์: 11:00 to 21:00 | วันอังคาร: 11:00 to 21:00", "phone": "+66 90 636 3959", "url": "https://www.google.com/maps/search/?api=1&query=Hokkaido%20Butadon%20Tokachi&query_place_id=ChIJhZttiIyf4jARI9apuZ-lYHc"}, {"name": "ร้านร่มไทร", "area": "Phrom Phong", "source": "Google Maps", "rating": 4.0, "review_count": 21, "price": "N/A", "food_type": "ร้านก๋วยเตี๋ยว", "address": "1738/4 ถ. เพชรบุรี แขวงบางกะปิ เขตห้วยขวาง กรุงเทพมหานคร 10310 ไทย", "opening_hours": "วันพุธ: 7:00 to 15:00 | วันพฤหัสบดี: 7:00 to 15:00 | วันศุกร์: 7:00 to 15:00 | วันเสาร์: ปิดทำการ | วันอาทิตย์: ปิดทำการ | วันจันทร์: 7:00 to 15:00 | วันอังคาร: 7:00 to 15:00", "phone": "N/A", "url": "https://www.google.com/maps/search/?api=1&query=%E0%B8%A3%E0%B9%89%E0%B8%B2%E0%B8%99%E0%B8%A3%E0%B9%88%E0%B8%A1%E0%B9%84%E0%B8%97%E0%B8%A3&query_place_id=ChIJDSSiPE-f4jARXzro250UJHk"}, {"name": "THE COFFEE CLUB", "area": "Phrom Phong", "source": "Google Maps", "rating": 4.6, "review_count": 1011, "price": "฿300-600", "food_type": "ร้านกาแฟ", "address": "Unit no. OP. G01, Fl. G, 1788 ถ. เพชรบุรีตัดใหม่ Bangkapi, เขตห้วยขวาง กรุงเทพมหานคร 10310 ไทย", "opening_hours": "วันพุธ: 7:00 to 20:00 | วันพฤหัสบดี: 7:00 to 20:00 | วันศุกร์: 7:00 to 20:00 | วันเสาร์: 8:00 to 19:30 | วันอาทิตย์: 8:00 to 19:30 | วันจันทร์: 7:00 to 20:00 | วันอังคาร: 7:00 to 20:00", "phone": "+66 63 272 6852", "url": "https://www.google.com/maps/search/?api=1&query=THE%20COFFEE%20CLUB&query_place_id=ChIJ_arwnHqf4jARYArZCLnCAyk"}, {"name": "On-Yasai", "area": "Phrom Phong", "source": "Google Maps", "rating": 4.0, "review_count": 170, "price": "N/A", "food_type": "ร้านอาหารชาบูชาบู", "address": "Unit no. 105 1788 ถนน เพชรบุรีตัดใหม่ แขวงบางกะปิ เขตห้วยขวาง กรุงเทพมหานคร 10310 ไทย", "opening_hours": "วันพุธ: 11:00 to 21:00 | วันพฤหัสบดี: 11:00 to 21:00 | วันศุกร์: 11:00 to 21:00 | วันเสาร์: 11:00 to 21:00 | วันอาทิตย์: 11:00 to 21:00 | วันจันทร์: 11:00 to 21:00 | วันอังคาร: 11:00 to 21:00", "phone": "+66 2 163 4330", "url": "https://www.google.com/maps/search/?api=1&query=On-Yasai&query_place_id=ChIJh9YLddCf4jARslTGBEbZgCs"}];
+
+// ── Utility ──────────────────────────────────────────────────
+function normalize(s){ return String(s).toLowerCase().trim(); }
+
+function priceLabel(p){
+  const m = {"฿100-300":"💚 ฿100–300","฿300-600":"💛 ฿300–600","฿600-1000":"🟠 ฿600–1000","฿1000+":"🔴 ฿1000+"};
+  return m[p] || p;
+}
+
+function renderTable(rows, cols){
+  if(!rows.length) return "<em>ไม่พบข้อมูล</em>";
+  const headers = cols.map(c => `<th>${c.label}</th>`).join('');
+  const body = rows.map(r => 
+    '<tr>' + cols.map(c => `<td>${r[c.key] ?? 'N/A'}</td>`).join('') + '</tr>'
+  ).join('');
+  return `<table class="ai-table"><thead><tr>${headers}</tr></thead><tbody>${body}</tbody></table>`;
+}
+
+function renderCard(r, badge=''){
+  return `<div class="ai-card">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+      ${badge ? `<span style="font-size:1.2rem">${badge}</span>` : ''}
+      <strong style="color:#1a3a5c">${r.name}</strong>
+      <span class="area-tag" style="margin-bottom:0">📍 ${r.area}</span>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;font-size:0.8rem;margin-bottom:8px;">
+      <span>⭐ ${r.rating}</span>
+      <span>👥 ${r.review_count.toLocaleString()} รีวิว</span>
+      <span>${priceLabel(r.price)}</span>
+      <span>🕐 ${r.opening_hours !== 'N/A' ? r.opening_hours.split('|')[0].trim() : 'N/A'}</span>
+    </div>
+    ${r.phone !== 'N/A' ? `<div style="font-size:0.8rem;color:#555">📞 ${r.phone}</div>` : ''}
+    ${r.url !== 'N/A' ? `<div style="font-size:0.8rem;margin-top:4px"><a href="${r.url}" target="_blank" style="color:#2e75b6">🔗 ดูรายละเอียด</a></div>` : ''}
+  </div>`;
+}
+
+// ── Intent Parser ─────────────────────────────────────────────
+function parseIntent(q){
+  const n = normalize(q);
+  const areas = {asok:['asok','อโศก'],siam:['siam','สยาม'],thonglor:['thonglor','ทองหล่อ'],
+                 'phrom phong':['phrom phong','พร้อมพงษ์','phrompong'],ari:['ari','อารีย์']};
+  const prices = {'฿100-300':['100','ถูก','100-300','budget'],'฿300-600':['300','กลาง','300-600'],
+                  '฿600-1000':['600','600-1000'],'฿1000+':['1000','แพง','expensive','premium']};
+
+  let area = null, price = null;
+  for(const [k,kws] of Object.entries(areas)) if(kws.some(w=>n.includes(w))) { area=k; break; }
+  for(const [k,kws] of Object.entries(prices)) if(kws.some(w=>n.includes(w))) { price=k; break; }
+
+  if(n.includes('rating') && (n.includes('สูง')||n.includes('top')||n.includes('best')||n.includes('มากที่สุด'))) return {type:'top_rating', area, price};
+  if(n.includes('รีวิว')&&(n.includes('เยอะ')||n.includes('มาก')||n.includes('สูง'))) return {type:'top_reviews', area, price};
+  if(n.includes('ถูก')||n.includes('cheap')||n.includes('budget')||n.includes('ราคาถูก')||n.includes('ราคาต่ำ')) return {type:'cheapest', area};
+  if(n.includes('แพง')||n.includes('premium')||n.includes('expensive')) return {type:'expensive', area};
+  if((n.includes('เปรียบ')||n.includes('compare')||n.includes('vs')||n.includes('กับ'))&&n.length>10) return {type:'compare', query:q};
+  if(n.includes('แนะนำ')||n.includes('recommend')||n.includes('suggest')||n.includes('ควรไป')) return {type:'recommend', area, price};
+  if(n.includes('ไทย')||n.includes('thai')) return {type:'food_type', food:'ไทย', area};
+  if(n.includes('ญี่ปุ่น')||n.includes('japan')||n.includes('ramen')||n.includes('sushi')) return {type:'food_type', food:'ญี่ปุ่น', area};
+  if(area) return {type:'by_area', area, price};
+  if(n.includes('ทั้งหมด')||n.includes('มีอะไร')||n.includes('list')) return {type:'list_all', area, price};
+  return {type:'search', query:q, area, price};
+}
+
+// ── Scorer (same model as ranking) ───────────────────────────
+function scoreRow(r){
+  const maxRating=5, maxLog=Math.log1p(5001);
+  const s1 = ((r.rating/maxRating)*0.6 + (Math.log1p(r.review_count)/maxLog)*0.4)*25;
+  const s2 = r.review_count>=500?20:r.review_count>=100?18:r.review_count>=30?15:12;
+  const pm = {'฿300-600':15,'฿600-1000':13,'฿100-300':10,'฿1000+':7,'N/A':5};
+  const s3 = pm[r.price]||5;
+  const am = {'Asok':15,'Siam':15,'Thonglor':12,'Phrom Phong':12,'Ari':9};
+  const s4 = am[r.area]||9;
+  const fields=['price','opening_hours','phone','address','url'];
+  const s5 = fields.filter(f=>r[f]&&r[f]!=='N/A').length * 3;
+  return s1+s2+s3+s4+s5;
+}
+
+// ── Area Filter Helpers ──────────────────────────────────────
+function suitableForGroup(rc){
+  if(rc > 500) return '✅ เหมาะ 10–12 คน';
+  if(rc >= 100) return '🟡 เหมาะ 6–10 คน';
+  return '⚪ เหมาะ 2–6 คน';
+}
+
+function calcScore(r){
+  const maxLog = Math.log1p(5001);
+  const s1 = ((r.rating/5)*0.6 + (Math.log1p(r.review_count)/maxLog)*0.4)*25;
+  const s2 = r.review_count>500?20:r.review_count>=100?18:r.review_count>=30?15:12;
+  const pm = {'฿300-600':15,'฿600-1000':13,'฿100-300':10,'฿1000+':7,'N/A':5};
+  const am = {'Asok':15,'Siam':15,'Thonglor':12,'Phrom Phong':12,'Ari':9};
+  const s3 = pm[r.price]||5, s4 = am[r.area]||9;
+  const fields=['price','opening_hours','phone','address','url'];
+  const s5 = fields.filter(f=>r[f]&&r[f]!=='N/A').length*3;
+  return Math.round((s1+s2+s3+s4+s5)*10)/10;
+}
+
+function renderAreaTable(rows, offset=0){
+  if(!rows.length) return '<div style="padding:16px;text-align:center;color:#888;">ไม่พบข้อมูลใน dataset</div>';
+  const thead = `<tr>
+    <th>#</th><th>ชื่อร้าน</th><th>ย่าน</th><th>ราคา</th>
+    <th>Rating</th><th>Score</th><th>ประเภทอาหาร</th>
+    <th>เวลาเปิด</th><th>เหมาะสำหรับกลุ่ม</th>
+  </tr>`;
+  const priceColor = {'฿100-300':'p1','฿300-600':'p2','฿600-1000':'p3','฿1000+':'p4','N/A':'pna'};
+  const tbody = rows.map((r,i)=>{
+    const hrs = r.opening_hours!=='N/A' ? r.opening_hours.split('|')[0].trim() : 'N/A';
+    const group = suitableForGroup(r.review_count);
+    const score = calcScore(r);
+    const pc = priceColor[r.price]||'pna';
+    return `<tr>
+      <td style="text-align:center;font-weight:700;color:#2e75b6">${offset+i+1}</td>
+      <td><strong>${r.name}</strong></td>
+      <td><span class="area-tag" style="margin:0">${r.area}</span></td>
+      <td><span class="price-chip ${pc}">${r.price}</span></td>
+      <td><span class="rating-star">⭐ ${r.rating}</span></td>
+      <td style="font-weight:700;color:#1a3a5c">${score}</td>
+      <td style="font-size:0.8rem">${r.food_type}</td>
+      <td style="font-size:0.77rem;color:#555;max-width:160px;word-break:break-word">${hrs}</td>
+      <td style="font-size:0.8rem;white-space:nowrap">${group}</td>
+    </tr>`;
+  }).join('');
+  return `<div style="overflow-x:auto"><table class="ai-table"><thead>${thead}</thead><tbody>${tbody}</tbody></table></div>`;
+}
+
+function renderSummaryBar(d, aLabel){
+  if(!d.length) return '';
+  const avgRating = (d.reduce((s,r)=>s+r.rating,0)/d.length).toFixed(2);
+  const prices = [...new Set(d.map(r=>r.price).filter(p=>p!=='N/A'))];
+  const priceOrder = ['฿100-300','฿300-600','฿600-1000','฿1000+'];
+  prices.sort((a,b)=>priceOrder.indexOf(a)-priceOrder.indexOf(b));
+  const suitable10 = d.filter(r=>r.review_count>500).length;
+  return `<div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+    <div style="background:#e8f4fd;border-radius:8px;padding:8px 14px;font-size:0.82rem;">
+      🏪 <strong>${d.length}</strong> ร้านใน ${aLabel}
+    </div>
+    <div style="background:#e8f4fd;border-radius:8px;padding:8px 14px;font-size:0.82rem;">
+      ⭐ Rating เฉลี่ย <strong>${avgRating}</strong>
+    </div>
+    <div style="background:#e8f4fd;border-radius:8px;padding:8px 14px;font-size:0.82rem;">
+      💰 ช่วงราคา: <strong>${prices.join(', ')||'N/A'}</strong>
+    </div>
+    <div style="background:#e8f4fd;border-radius:8px;padding:8px 14px;font-size:0.82rem;">
+      👥 เหมาะ 10–12 คน: <strong>${suitable10} ร้าน</strong>
+    </div>
+  </div>`;
+}
+
+function answerByArea(area, price){
+  let d = [...DATASET];
+  if(area) d = d.filter(r=>normalize(r.area).includes(normalize(area)));
+  if(price) d = d.filter(r=>r.price===price);
+  d.sort((a,b)=>calcScore(b)-calcScore(a));
+
+  const aLabel = area ? area.charAt(0).toUpperCase()+area.slice(1) : 'ทั้งหมด';
+
+  if(!d.length){
+    return {
+      answer: `ไม่พบข้อมูลใน dataset สำหรับย่าน <strong>${aLabel}</strong>${price?' ราคา '+price:''}`,
+      data: ''
+    };
+  }
+
+  const summary = renderSummaryBar(d, aLabel);
+  const table = renderAreaTable(d);
+  return {
+    answer: `ผลลัพธ์ย่าน <strong>${aLabel}</strong>${price?' ราคา '+price:''}`,
+    data: summary + table
+  };
+}
+
+// ── Answer Engine ─────────────────────────────────────────────
+function answer(q){
+  const intent = parseIntent(q);
+  let data = [...DATASET];
+
+  // Filter helpers
+  const filterArea = (d, a) => a ? d.filter(r=>normalize(r.area).includes(normalize(a))) : d;
+  const filterPrice = (d, p) => p ? d.filter(r=>r.price===p) : d;
+
+  if(intent.type==='top_rating'){
+    let d = filterArea(filterPrice(data, intent.price), intent.area);
+    d.sort((a,b)=>b.rating-a.rating||b.review_count-a.review_count);
+    const top=d.slice(0,5);
+    return {
+      answer: `ร้านที่ rating สูงสุด${intent.area?' ใน '+intent.area:''}${intent.price?' ราคา '+intent.price:''} คือ <strong>${top[0]?.name}</strong> (⭐ ${top[0]?.rating})`,
+      data: renderTable(top,[{key:'name',label:'ชื่อร้าน'},{key:'area',label:'ย่าน'},{key:'rating',label:'Rating'},{key:'review_count',label:'รีวิว'},{key:'price',label:'ราคา'}])
+    };
+  }
+
+  if(intent.type==='top_reviews'){
+    let d = filterArea(data, intent.area);
+    d.sort((a,b)=>b.review_count-a.review_count);
+    const top=d.slice(0,5);
+    return {
+      answer: `ร้านที่มีรีวิวมากที่สุด${intent.area?' ใน '+intent.area:''} คือ <strong>${top[0]?.name}</strong> (${top[0]?.review_count?.toLocaleString()} รีวิว)`,
+      data: renderTable(top,[{key:'name',label:'ชื่อร้าน'},{key:'area',label:'ย่าน'},{key:'review_count',label:'รีวิว'},{key:'rating',label:'Rating'},{key:'price',label:'ราคา'}])
+    };
+  }
+
+  if(intent.type==='cheapest'){
+    let d = filterArea(data, intent.area).filter(r=>r.price!=='N/A');
+    const order = ['฿100-300','฿300-600','฿600-1000','฿1000+'];
+    d.sort((a,b)=>order.indexOf(a.price)-order.indexOf(b.price)||b.rating-a.rating);
+    const top=d.slice(0,5);
+    return {
+      answer: `ร้านราคาถูกที่สุด${intent.area?' ใน '+intent.area:''} (เรียงตามราคา → rating)`,
+      data: renderTable(top,[{key:'name',label:'ชื่อร้าน'},{key:'area',label:'ย่าน'},{key:'price',label:'ราคา'},{key:'rating',label:'Rating'}])
+    };
+  }
+
+  if(intent.type==='expensive'){
+    let d = filterArea(data, intent.area).filter(r=>r.price!=='N/A');
+    d.sort((a,b)=>b.rating-a.rating);
+    const top=d.filter(r=>r.price==='฿1000+').slice(0,5);
+    return {
+      answer: `ร้านระดับ Premium (฿1000+)${intent.area?' ใน '+intent.area:''}`,
+      data: renderTable(top,[{key:'name',label:'ชื่อร้าน'},{key:'area',label:'ย่าน'},{key:'price',label:'ราคา'},{key:'rating',label:'Rating'},{key:'review_count',label:'รีวิว'}])
+    };
+  }
+
+  if(intent.type==='recommend'){
+    let d = filterArea(filterPrice(data, intent.price), intent.area);
+    d.sort((a,b)=>scoreRow(b)-scoreRow(a));
+    const top=d.slice(0,3);
+    const cards=top.map((r,i)=>renderCard(r,['🥇','🥈','🥉'][i]||'')).join('');
+    return {
+      answer: `แนะนำร้านยอดเยี่ยม${intent.area?' ใน '+intent.area:''}${intent.price?' ราคา '+intent.price:''} สำหรับกลุ่ม 8–12 คน`,
+      data: `<div style="display:grid;gap:12px">${cards}</div>`
+    };
+  }
+
+  if(intent.type==='food_type'){
+    const kws = intent.food==='ไทย'
+      ? ['ไทย','thai','สยาม','jasmine','madam','som']
+      : ['ญี่ปุ่น','japan','ramen','sushi','izakaya','อิซากายะ','shokudo','kurathai'];
+    let d = filterArea(data, intent.area).filter(r=>
+      kws.some(k=>normalize(r.name).includes(k)||normalize(r.food_type).includes(k))
+    );
+    d.sort((a,b)=>scoreRow(b)-scoreRow(a));
+    const top=d.slice(0,5);
+    return {
+      answer: `ร้านอาหาร${intent.food}${intent.area?' ใน '+intent.area:''} (${d.length} ร้านที่พบ)`,
+      data: renderTable(top,[{key:'name',label:'ชื่อร้าน'},{key:'area',label:'ย่าน'},{key:'rating',label:'Rating'},{key:'price',label:'ราคา'},{key:'food_type',label:'ประเภท'}])
+    };
+  }
+
+  if(intent.type==='by_area'){
+    return answerByArea(intent.area, intent.price);
+  }
+
+  if(intent.type==='compare'){
+    const words = normalize(q).split(/\s+/);
+    let found = [];
+    for(const r of data){
+      const n = normalize(r.name);
+      if(words.some(w=>w.length>3 && n.includes(w))) found.push(r);
+      if(found.length>=2) break;
+    }
+    if(found.length<2){
+      // fallback: pick top 2 scored
+      found = [...data].sort((a,b)=>scoreRow(b)-scoreRow(a)).slice(0,2);
+    }
+    const cards = found.map(r=>renderCard(r)).join('');
+    return {
+      answer: `เปรียบเทียบ: <strong>${found.map(r=>r.name).join(' vs ')}</strong>`,
+      data: `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px">${cards}</div>`
+    };
+  }
+
+  // Generic search
+  const qn = normalize(q);
+  let d = data.filter(r=>
+    normalize(r.name).includes(qn)||normalize(r.food_type).includes(qn)||
+    normalize(r.area).includes(qn)||normalize(r.address).includes(qn)
+  );
+  if(intent.area) d = filterArea(d.length?d:data, intent.area);
+  if(intent.price) d = filterPrice(d, intent.price);
+  d.sort((a,b)=>scoreRow(b)-scoreRow(a));
+
+  if(!d.length){
+    return {answer:`ไม่พบข้อมูลสำหรับ "<strong>${q}</strong>" ใน dataset`, data:''};
+  }
+  const top=d.slice(0,5);
+  return {
+    answer: `พบ ${d.length} ร้านที่ตรงกับ "<strong>${q}</strong>"`,
+    data: renderTable(top,[{key:'name',label:'ชื่อร้าน'},{key:'area',label:'ย่าน'},{key:'rating',label:'Rating'},{key:'price',label:'ราคา'},{key:'food_type',label:'ประเภท'}])
+  };
+}
+
+// ── Area Top 3 Section ──────────────────────────────────────
+function showAreaTop3(btn, area){
+  document.querySelectorAll('.area-top3-btn').forEach(b=>b.classList.remove('active-atb'));
+  btn.classList.add('active-atb');
+
+  const medals = ['🥇','🥈','🥉'];
+  const top3 = [...DATASET]
+    .filter(r => normalize(r.area).includes(normalize(area)))
+    .sort((a,b) => calcScore(b)-calcScore(a))
+    .slice(0,3);
+
+  const scoreOf = r => calcScore(r).toFixed(1);
+  const groupOf = r => {
+    const rc = Number(r.review_count)||0;
+    if(rc>500)      return '👥 10–12 คน';
+    if(rc>=100)     return '👥 6–10 คน';
+    return '👥 2–6 คน';
+  };
+  const priceColor = p =>
+    p==='฿100-300'?'#27ae60':p==='฿300-600'?'#f39c12':p==='฿600-1000'?'#e67e22':'#e74c3c';
+
+  const cardColors = ['#1a3a5c','#2e75b6','#4a9fd4'];
+
+  const cards = top3.map((r,i) => `
+    <div style="background:#fff;border-radius:14px;padding:24px 22px;
+         box-shadow:0 3px 14px rgba(0,0,0,0.09);border-top:4px solid ${cardColors[i]};
+         display:flex;flex-direction:column;gap:8px;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:1.8rem;line-height:1;">${medals[i]}</span>
+        <div>
+          <div style="font-size:1rem;font-weight:700;color:#1a3a5c;">${r.name}</div>
+          <div style="font-size:0.78rem;color:#888;">📍 ${r.area}</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;">
+        <span style="background:#f0f7ff;color:#1a3a5c;border-radius:10px;padding:3px 10px;font-size:0.78rem;">⭐ ${r.rating}</span>
+        <span style="background:${priceColor(r.price)}22;color:${priceColor(r.price)};border-radius:10px;padding:3px 10px;font-size:0.78rem;font-weight:600;">${r.price||'N/A'}</span>
+        <span style="background:#f5f5f5;color:#555;border-radius:10px;padding:3px 10px;font-size:0.78rem;">${r.food_type||'N/A'}</span>
+        <span style="background:#e8f5e9;color:#2e7d32;border-radius:10px;padding:3px 10px;font-size:0.78rem;">${groupOf(r)}</span>
+      </div>
+      <div style="font-size:0.82rem;color:#666;margin-top:2px;">🏆 คะแนนรวม: <strong style="color:#2e75b6;">${scoreOf(r)} / 100</strong></div>
+      ${r.opening_hours&&r.opening_hours!=='N/A'?`<div style="font-size:0.78rem;color:#888;">⏰ ${r.opening_hours}</div>`:''}
+    </div>`).join('');
+
+  document.getElementById('area-top3-result').innerHTML =
+    `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;">${cards}</div>`;
+
+  // Dynamic comparison
+  renderAreaCompare(top3, area);
+}
+
+function renderAreaCompare(top3, area){
+  if(!top3.length){ document.getElementById('area-compare-result').innerHTML=''; return; }
+  const medals = ['🥇','🥈','🥉'];
+  const priceRank = {'฿100-300':1,'฿300-600':2,'฿600-1000':3,'฿1000+':4,'N/A':5};
+  const maxRc = Math.max(...top3.map(r=>Number(r.review_count)||0));
+
+  function pros(r, i){
+    const items = [];
+    if(Number(r.rating)>=4.7) items.push(`Rating สูง (${r.rating})`);
+    else if(Number(r.rating)>=4.5) items.push(`Rating ดี (${r.rating})`);
+    const rc = Number(r.review_count)||0;
+    if(rc===maxRc) items.push(`รีวิวมากที่สุดในกลุ่ม (${rc.toLocaleString()})`);
+    else if(rc>=500) items.push(`รีวิวเยอะ (${rc.toLocaleString()})`);
+    const pr = priceRank[r.price]||5;
+    if(pr<=2) items.push(`ราคาเป็นมิตร ${r.price}`);
+    else if(pr===3) items.push(`ราคากลาง ${r.price}`);
+    if(r.food_type && r.food_type!=='N/A') items.push(`${r.food_type}`);
+    return items.slice(0,3);
+  }
+  function cons(r, i){
+    const items = [];
+    const rc = Number(r.review_count)||0;
+    if(rc<500) items.push(`รีวิวน้อยกว่าอันดับอื่น (${rc.toLocaleString()})`);
+    const pr = priceRank[r.price]||5;
+    if(pr>=4) items.push(`ราคาค่อนข้างสูง ${r.price}`);
+    if(r.price==='N/A') items.push('ไม่ระบุราคา');
+    if(items.length===0) items.push('ข้อมูลบางส่วนไม่ครบ');
+    return items.slice(0,2);
+  }
+
+  const compareCards = top3.map((r,i) => `
+    <div class="compare-card">
+      <h4>${medals[i]} ${r.name}</h4>
+      <div class="pros-cons">
+        ${pros(r,i).map(p=>`<div class="pro">✅ ${p}</div>`).join('')}
+        ${cons(r,i).map(c=>`<div class="con">⚠️ ${c}</div>`).join('')}
+      </div>
+    </div>`).join('');
+
+  document.getElementById('area-compare-result').innerHTML = `
+    <div class="comparison" style="margin-top:0;">
+      <div class="section-title">⚖️ เปรียบเทียบ Top 3 — ${area}</div>
+      <div class="compare-grid">${compareCards}</div>
+    </div>`;
+}
+
+// ── Multi-Filter System (Restaurant From Data Set) ───────────
+let _areaData = [], _areaPage = 1;
+const PAGE_SIZE = 30;
+let _filters = { food: '', price: '' };
+
+// Food type keyword mapping from clean_data
+const FOOD_MAP = {
+  thai:          ['ไทย','thai','jasmine','madam','som tum','ส้มตำ','สยาม kitchen'],
+  japanese:      ['ญี่ปุ่น','japan','ramen','sushi','izakaya','อิซาค','shokudo','kurathai','เทมปุระ','เนื้อย่างสไตล์ญี่ปุ่น','ตะวันตกสไตล์ญี่ปุ่น','ราเมน'],
+  western:       ['ตะวันตก','western','italian','อิตาเลียน','ฝรั่งเศส','french','steak','สเต็ก','burger','เบอร์เกอร์','bistro'],
+  seafood:       ['ทะเล','seafood','หูฉลาม','fish','กุ้ง'],
+  cafe:          ['กาแฟ','cafe','coffee','คาเฟ่','brunch','breakfast'],
+  noodle:        ['ก๋วยเตี๋ยว','noodle','ชาบู','shabu','บาร์บีคิว','barbecue','bbq'],
+  international: ['เม็กซิกัน','mexican','อินเดีย','indian','เกาหลี','korean','เวียดนาม','vietnam','จีน','chinese','ติ่มซำ','dim sum'],
+  general:       ['restaurant','ร้านอาหาร']
+};
+
+function matchFoodType(row, foodKey){
+  if(!foodKey) return true;
+  const keywords = FOOD_MAP[foodKey] || [];
+  const ft = normalize(row.food_type);
+  const nm = normalize(row.name);
+  return keywords.some(k => ft.includes(k) || nm.includes(k));
+}
+
+function setFilter(group, val, btn){
+  _filters[group] = val;
+  // Update active chip for this group
+  document.querySelectorAll(`.filter-chip[data-group="${group}"]`).forEach(b=>b.classList.remove('active-fc'));
+  btn.classList.add('active-fc');
+  _areaPage = 1;
+  applyFilters();
+}
+
+function applyFilters(){
+  let d = [...DATASET];
+  if(_filters.food)  d = d.filter(r=>matchFoodType(r, _filters.food));
+  if(_filters.price) d = d.filter(r=>r.price===_filters.price);
+  d.sort((a,b)=>calcScore(b)-calcScore(a));
+  _areaData = d;
+
+  // Active filter tags
+  const tags = [];
+  if(_filters.food){
+    const labels = {thai:'🥘 อาหารไทย',japanese:'🍣 อาหารญี่ปุ่น',western:'🍝 อาหารตะวันตก',
+      seafood:'🦞 อาหารทะเล',cafe:'☕ คาเฟ่',noodle:'🍜 ก๋วยเตี๋ยว/ชาบู',
+      international:'🌮 นานาชาติ',general:'🍴 ทั่วไป'};
+    tags.push(labels[_filters.food]||_filters.food);
+  }
+  if(_filters.price) tags.push(`💰 ${_filters.price}`);
+
+  const tagDiv = document.getElementById('filter-tags');
+  if(tags.length){
+    tagDiv.innerHTML = '<span style="font-size:0.78rem;color:#888;margin-right:6px;">กรองด้วย:</span>'
+      + tags.map(t=>`<span style="background:#e8f4fd;color:#1a3a5c;border-radius:12px;padding:3px 10px;font-size:0.78rem;margin-right:4px;">${t}</span>`).join('')
+      + `<button onclick="resetFilters()" style="background:none;border:none;color:#e74c3c;font-size:0.78rem;cursor:pointer;margin-left:4px;">✕ ล้าง</button>`;
+  } else {
+    tagDiv.innerHTML = '';
+  }
+
+  renderAreaPage();
+}
+
+function resetFilters(){
+  _filters = {food:'',price:''};
+  document.querySelectorAll('.filter-chip').forEach(b=>{
+    b.classList.remove('active-fc');
+    if(b.dataset.val==='') b.classList.add('active-fc');
+  });
+  _areaPage = 1;
+  applyFilters();
+}
+
+// Legacy stub (area filter removed from dataset section)
+function showAreaFilter(btn, area){}
+
+function renderAreaPage(){
+  const d = _areaData;
+  const total = d.length;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  _areaPage = Math.min(_areaPage, totalPages);
+
+  const start = (_areaPage-1)*PAGE_SIZE;
+  const slice = d.slice(start, start+PAGE_SIZE);
+
+  // Summary (always full dataset)
+  const aLabel = ''; // already shown via button
+  document.getElementById('area-summary').innerHTML = renderSummaryBar(d, 'ผลลัพธ์');
+
+  const wrap = document.getElementById('area-result');
+  if(!d.length){
+    wrap.innerHTML = '<div style="padding:20px;text-align:center;color:#888;background:#fff;border-radius:8px;">ไม่พบข้อมูลใน dataset</div>';
+    document.getElementById('area-pagination').innerHTML = '';
+    return;
+  }
+  wrap.innerHTML = renderAreaTable(slice, start);
+
+  // Pagination
+  const pg = document.getElementById('area-pagination');
+  if(totalPages <= 1){ pg.innerHTML=''; return; }
+
+  let pgHTML = '';
+  const btnStyle = (active) =>
+    `style="padding:7px 14px;border-radius:8px;border:1.5px solid ${active?'#2e75b6':'#d0e4f7'};
+     background:${active?'#2e75b6':'#fff'};color:${active?'#fff':'#1a3a5c'};
+     cursor:pointer;font-size:0.83rem;font-weight:${active?'700':'500'};transition:all 0.15s;"`;
+
+  pgHTML += `<button ${btnStyle(false)} onclick="gotoPage(${_areaPage-1})" ${_areaPage===1?'disabled':''}>‹ ก่อนหน้า</button>`;
+
+  // Page number buttons (show up to 7)
+  const range = 3;
+  for(let p=1;p<=totalPages;p++){
+    if(p===1||p===totalPages||Math.abs(p-_areaPage)<=range){
+      pgHTML += `<button ${btnStyle(p===_areaPage)} onclick="gotoPage(${p})">${p}</button>`;
+    } else if(Math.abs(p-_areaPage)===range+1){
+      pgHTML += `<span style="color:#aaa;padding:0 4px">…</span>`;
+    }
+  }
+
+  pgHTML += `<button ${btnStyle(false)} onclick="gotoPage(${_areaPage+1})" ${_areaPage===totalPages?'disabled':''}>ถัดไป ›</button>`;
+  pgHTML += `<span style="font-size:0.8rem;color:#888;">หน้า ${_areaPage}/${totalPages} · ${total} ร้าน</span>`;
+
+  pg.innerHTML = pgHTML;
+}
+
+function gotoPage(p){
+  const total = _areaData.length;
+  const totalPages = Math.ceil(total/PAGE_SIZE);
+  if(p<1||p>totalPages) return;
+  _areaPage = p;
+  renderAreaPage();
+  document.getElementById('area-filter-section').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+// Auto-load on page load
+window.addEventListener('DOMContentLoaded', ()=>{
+  // Show Asok top3 by default
+  const firstBtn = document.querySelector('.area-top3-btn');
+  if(firstBtn) showAreaTop3(firstBtn, 'Asok');
+
+  applyFilters();
+});
+
+// ── Area Filter Button (for AI Ask Box chat) ──────────────────
+function filterByArea(btn, area){
+  // Update active chip style
+  // (area chip active state handled by standalone section only)
+
+  const box = document.getElementById('chat-box');
+  box.style.display = 'block';
+
+  const label = area || 'ทั้งหมด';
+  box.innerHTML += `<div class="user-msg">แสดงร้านใน ${label}</div>`;
+  const tid = 'typing-'+Date.now();
+  box.innerHTML += `<div id="${tid}" class="bot-msg" style="color:#aaa">กำลังกรองข้อมูล...</div>`;
+  box.scrollTop = box.scrollHeight;
+
+  setTimeout(()=>{
+    const res = answerByArea(area, null);
+    const el = document.getElementById(tid);
+    if(el) el.outerHTML = `
+      <div class="bot-msg">
+        <div class="answer-label">📌 Answer:</div>
+        <div style="margin-bottom:12px">${res.answer}</div>
+        ${res.data ? `<div class="answer-label">📊 Supporting Data:</div><div>${res.data}</div>` : ''}
+      </div>`;
+    box.scrollTop = box.scrollHeight;
+  }, 300);
+}
+
+// ── UI ───────────────────────────────────────────────────────
+function sendQuestion(){
+  const input = document.getElementById('ai-input');
+  const q = input.value.trim();
+  if(!q) return;
+  askQuestion(q);
+  input.value = '';
+}
+
+function askQuestion(q){
+  const box = document.getElementById('chat-box');
+  box.style.display = 'block';
+
+  // User bubble
+  box.innerHTML += `<div class="user-msg">${q}</div>`;
+
+  // Typing indicator
+  const tid = 'typing-'+Date.now();
+  box.innerHTML += `<div id="${tid}" class="bot-msg" style="color:#aaa">กำลังวิเคราะห์ข้อมูล...</div>`;
+  box.scrollTop = box.scrollHeight;
+
+  setTimeout(()=>{
+    const res = answer(q);
+    const el = document.getElementById(tid);
+    if(el) el.outerHTML = `
+      <div class="bot-msg">
+        <div class="answer-label">📌 Answer:</div>
+        <div style="margin-bottom:12px">${res.answer}</div>
+        ${res.data ? `<div class="answer-label">📊 Supporting Data:</div><div>${res.data}</div>` : ''}
+      </div>`;
+    box.scrollTop = box.scrollHeight;
+  }, 400);
+}
+</script>
+
+</body>
+</html>
